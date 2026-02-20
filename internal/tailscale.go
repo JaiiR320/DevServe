@@ -3,6 +3,7 @@ package internal
 import (
 	"io"
 	"os/exec"
+	"strconv"
 )
 
 type TailscaleManager struct {
@@ -17,8 +18,10 @@ func NewTailscaleManager(stdout, stderr io.Writer) *TailscaleManager {
 	}
 }
 
-func (tm *TailscaleManager) Start(port string) error {
-	cmd := exec.Command("tailscale", "serve", "--https", port, "--bg", "--yes", port)
+func (tm *TailscaleManager) Start(port int) error {
+	portStr := strconv.Itoa(port)
+
+	cmd := exec.Command("tailscale", "serve", "--https", portStr, "--bg", "--yes", portStr)
 
 	cmd.Stdout = tm.Stdout
 	cmd.Stderr = tm.Stderr
@@ -26,8 +29,9 @@ func (tm *TailscaleManager) Start(port string) error {
 	return cmd.Run()
 }
 
-func (tm *TailscaleManager) Stop(port string) error {
-	cmd := exec.Command("tailscale", "serve", "--https", port, "off")
+func (tm *TailscaleManager) Stop(port int) error {
+	portStr := strconv.Itoa(port)
+	cmd := exec.Command("tailscale", "serve", "--https", portStr, "off")
 
 	cmd.Stdout = tm.Stdout
 	cmd.Stderr = tm.Stderr
