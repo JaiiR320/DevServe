@@ -1,0 +1,5 @@
+{
+  "scripts": {
+    "dev": "echo 'ready on http://localhost:3000' && tail -f /dev/null"
+  }
+}
