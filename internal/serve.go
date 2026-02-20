@@ -8,6 +8,8 @@ import (
 	"os/signal"
 	"strconv"
 	"strings"
+	"syscall"
+	"time"
 )
 
 func Serve(port int, bg bool) error {
@@ -18,28 +20,53 @@ func Serve(port int, bg bool) error {
 		return err
 	}
 
-	stdout, stderr, err := getOutputs(bg)
+	var stdout io.Writer
+	var stderr io.Writer
 
-	cmd := exec.Command("tailscale", "serve", "--https", portStr, "--bg", "--yes", portStr)
+	fm := NewLocalFM()
+	if bg {
+		err = fm.InitDir()
+		if err != nil {
+			return fmt.Errorf("Failed to init directory: %w", err)
+		}
+		stdout, stderr, err = fm.CreateLogFiles()
+		if err != nil {
+			return fmt.Errorf("Failed creating std log files: %w", err)
+		}
+	} else {
+		stdout = os.Stdout
+		stderr = os.Stderr
+	}
 
-	cmd.Stderr = stderr
-	cmd.Stdout = stdout
+	tm := NewTailscaleManager(stdout, stderr)
 
-	err = cmd.Run()
+	err = tm.Start(portStr)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to start Tailscale: %w", err)
 	}
 
 	command := PMToCommand[pm]
 	args := strings.Split(command, " ")
-	cmd = exec.Command(args[0], args[1:]...)
+	cmd := exec.Command(args[0], args[1:]...)
 
 	cmd.Stderr = stderr
 	cmd.Stdout = stdout
 
 	if bg {
-		return cmd.Start()
+		err = cmd.Start()
+		if err != nil {
+			return err
+		}
+		pid := cmd.Process.Pid
+		err = fm.SavePID(pid)
+		if err != nil {
+			return fmt.Errorf("failed saving PID: %w", err)
+		}
+
+		return nil
 	}
+
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
 	sigChan := make(chan os.Signal, 1)
 	doneChan := make(chan struct{}, 1)
@@ -58,40 +85,12 @@ func Serve(port int, bg bool) error {
 
 	select {
 	case <-sigChan:
-		err := cmd.Process.Kill()
-		if err != nil {
-			return err
-		}
-		return stopTailscale(portStr)
+		// Kill entire process group
+		syscall.Kill(-cmd.Process.Pid, syscall.SIGTERM)
+		time.Sleep(100 * time.Millisecond)
+		syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
+		return tm.Stop(portStr)
 	case <-doneChan:
-		fmt.Println("dev server exited")
-		return stopTailscale(portStr)
+		return tm.Stop(portStr)
 	}
-}
-
-func getOutputs(bg bool) (outWriter io.Writer, errWriter io.Writer, error error) {
-	if !bg {
-		return os.Stdout, os.Stderr, nil
-	}
-
-	err := os.MkdirAll(".devserve", 0755)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create folder")
-	}
-	outFile, err := os.Create(".devserve/out.log")
-	if err != nil {
-		return nil, nil, fmt.Errorf("couldn't create out.log")
-	}
-
-	errFile, err := os.Create(".devserve/err.log")
-	if err != nil {
-		return nil, nil, fmt.Errorf("couldn't create out.log")
-	}
-
-	return outFile, errFile, nil
-}
-
-func stopTailscale(portStr string) error {
-	cmd := exec.Command("tailscale", "serve", "--https", portStr, "off")
-	return cmd.Run()
 }
