@@ -21,15 +21,25 @@ var serveCmd = &cobra.Command{
 		port, err := cmd.Flags().GetInt("port")
 		if err != nil {
 			fmt.Println(err)
+			return
 		}
-		err = internal.Serve(port)
+
+		bg, err := cmd.Flags().GetBool("bg")
 		if err != nil {
 			fmt.Println(err)
+			return
+		}
+
+		err = internal.Serve(port, bg)
+		if err != nil {
+			fmt.Println(err)
+			return
 		}
 	},
 }
 
 func init() {
-	serveCmd.Flags().Int("port", 3000, "port to use")
+	serveCmd.Flags().IntP("port", "p", 3000, "port to use")
+	serveCmd.Flags().Bool("bg", false, "run in background")
 	rootCmd.AddCommand(serveCmd)
 }

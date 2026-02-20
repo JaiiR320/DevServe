@@ -1,5 +1,5 @@
 {
   "scripts": {
-    "dev": "echo 'ready on http://localhost:3000' && tail -f /dev/null"
+    "dev": "echo 'ready on http://localhost:3000' && sleep 5 && notify-send done && echo done"
   }
 }

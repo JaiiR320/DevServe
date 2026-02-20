@@ -2,43 +2,48 @@ package internal
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"os/signal"
 	"strconv"
 	"strings"
-	"syscall"
 )
 
-func Serve(port int) error {
+func Serve(port int, bg bool) error {
+	portStr := strconv.Itoa(port)
+
 	pm, err := DetectPackageManager()
 	if err != nil {
 		return err
 	}
-	portStr := strconv.Itoa(port)
+
+	stdout, stderr, err := getOutputs(bg)
+
 	cmd := exec.Command("tailscale", "serve", "--https", portStr, "--bg", "--yes", portStr)
 
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	cmd.Stderr = stderr
+	cmd.Stdout = stdout
 
 	err = cmd.Run()
 	if err != nil {
-		return fmt.Errorf("tailscale failed: %w", err)
+		return err
 	}
 
 	command := PMToCommand[pm]
 	args := strings.Split(command, " ")
 	cmd = exec.Command(args[0], args[1:]...)
 
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	cmd.Stderr = stderr
+	cmd.Stdout = stdout
 
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	if bg {
+		return cmd.Start()
+	}
 
 	sigChan := make(chan os.Signal, 1)
 	doneChan := make(chan struct{}, 1)
 
-	fmt.Println("\nstarting dev server")
 	signal.Ignore(os.Interrupt)
 	signal.Notify(sigChan, os.Interrupt)
 	err = cmd.Start()
@@ -64,11 +69,29 @@ func Serve(port int) error {
 	}
 }
 
+func getOutputs(bg bool) (outWriter io.Writer, errWriter io.Writer, error error) {
+	if !bg {
+		return os.Stdout, os.Stderr, nil
+	}
+
+	err := os.MkdirAll(".devserve", 0755)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create folder")
+	}
+	outFile, err := os.Create(".devserve/out.log")
+	if err != nil {
+		return nil, nil, fmt.Errorf("couldn't create out.log")
+	}
+
+	errFile, err := os.Create(".devserve/err.log")
+	if err != nil {
+		return nil, nil, fmt.Errorf("couldn't create out.log")
+	}
+
+	return outFile, errFile, nil
+}
+
 func stopTailscale(portStr string) error {
 	cmd := exec.Command("tailscale", "serve", "--https", portStr, "off")
-	err := cmd.Run()
-	if err != nil {
-		return err
-	}
-	return nil
+	return cmd.Run()
 }
