@@ -3,9 +3,11 @@ package internal
 import (
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"os/exec"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 )
@@ -30,20 +32,48 @@ func (p *Process) SetOutputs(stdout, stderr io.Writer) {
 	p.Cmd.Stderr = stderr
 }
 
-func (p *Process) Start() error {
+func (p *Process) Start(fm *FileManager) error {
 	p.Cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
-	sigChan := make(chan os.Signal, 1)
-	doneChan := make(chan struct{}, 1)
-
-	signal.Ignore(os.Interrupt)
-	signal.Notify(sigChan, os.Interrupt)
+	fmt.Println("Starting dev server...")
 	err := p.Cmd.Start()
 	if err != nil {
 		return fmt.Errorf("failed to start dev server: %w", err)
 	}
 
 	p.PID = p.Cmd.Process.Pid
+
+	portstr := strconv.Itoa(p.Port)
+
+	attempts := 0
+	for {
+		if attempts == 60 {
+			p.Stop()
+			return fmt.Errorf("Max attempts to dial")
+		}
+		conn, _ := net.Dial("tcp", "localhost:"+portstr)
+		if conn != nil {
+			conn.Close()
+			break
+		}
+		time.Sleep(250 * time.Millisecond)
+		attempts++
+	}
+
+	err = saveProcess(fm, p)
+	if err != nil {
+		return fmt.Errorf("Failed to save process: %w", err)
+	}
+	fmt.Println("Dev server started. Listening on " + portstr)
+	return nil
+}
+
+func (p *Process) Wait() error {
+	sigChan := make(chan os.Signal, 1)
+	doneChan := make(chan struct{}, 1)
+
+	signal.Ignore(os.Interrupt)
+	signal.Notify(sigChan, os.Interrupt)
 
 	go func() {
 		p.Cmd.Wait()
@@ -55,18 +85,6 @@ func (p *Process) Start() error {
 		p.Stop()
 	case <-doneChan:
 	}
-	return nil
-}
-
-func (p *Process) StartBG(fm *FileManager) error {
-	err := p.Cmd.Start()
-	if err != nil {
-		return fmt.Errorf("Failed starting command: %w", err)
-	}
-	p.PID = p.Cmd.Process.Pid
-
-	saveProcess(fm, p)
-
 	return nil
 }
 
