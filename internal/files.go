@@ -17,7 +17,8 @@ func NewLocalFM() *FileManager {
 
 func NewGlobalFM() *FileManager {
 	// hardcoded for now
-	return &FileManager{basePath: os.ExpandEnv("$HOME/.config/devserve")}
+	// return &FileManager{basePath: os.ExpandEnv("$HOME/.config/devserve")}
+	return NewLocalFM()
 }
 
 func (fm *FileManager) InitDir() error {
