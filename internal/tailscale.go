@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"fmt"
 	"io"
 	"os/exec"
 	"strconv"
@@ -26,6 +27,7 @@ func (tm *TailscaleManager) Start(port int) error {
 	cmd.Stdout = tm.Stdout
 	cmd.Stderr = tm.Stderr
 
+	fmt.Println("Starting tailscale on port " + portStr)
 	return cmd.Run()
 }
 
@@ -36,5 +38,6 @@ func (tm *TailscaleManager) Stop(port int) error {
 	cmd.Stdout = tm.Stdout
 	cmd.Stderr = tm.Stderr
 
+	fmt.Println("Stopping tailscale on port " + portStr)
 	return cmd.Run()
 }
