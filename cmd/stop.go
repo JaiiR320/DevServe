@@ -6,7 +6,6 @@ package cmd
 import (
 	"devserve/internal"
 	"fmt"
-	"os"
 	"os/exec"
 	"strconv"
 
@@ -30,6 +29,7 @@ var stopCmd = &cobra.Command{
 			fmt.Printf("Could not find a process with that port, %s", err)
 			return
 		}
+		fmt.Println("Stopping dev server on port ", portStr)
 		p.Stop()
 
 		// remove files
@@ -40,9 +40,7 @@ var stopCmd = &cobra.Command{
 
 		c := exec.Command("tailscale", "serve", "--https", portStr, "off")
 
-		c.Stdout = os.Stdout
-		c.Stderr = os.Stderr
-
+		fmt.Println("Stopping tailscale on port ", portStr)
 		err = c.Run()
 		if err != nil {
 			fmt.Println("Couldn not stop tailscale, %w", err)
