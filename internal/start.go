@@ -20,10 +20,6 @@ func Start(port int, bg bool) error {
 
 	if bg {
 		fm = NewGlobalFM()
-		err = fm.InitDir()
-		if err != nil {
-			return fmt.Errorf("Failed to init directory: %w", err)
-		}
 		stdout, stderr, err = fm.CreateLogFiles()
 		if err != nil {
 			return fmt.Errorf("Failed creating std log files: %w", err)

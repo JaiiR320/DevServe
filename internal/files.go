@@ -30,6 +30,11 @@ func (fm *FileManager) InitDir() error {
 }
 
 func (fm *FileManager) CreateFile(fileName string) (io.WriteCloser, error) {
+	err := fm.InitDir()
+	if err != nil {
+		return nil, fmt.Errorf("Failed to init dir: %w", err)
+	}
+
 	file, err := os.Create(filepath.Join(fm.basePath, fileName))
 	if err != nil {
 		return nil, fmt.Errorf("couldn't create %s: %w", fileName, err)
@@ -38,6 +43,11 @@ func (fm *FileManager) CreateFile(fileName string) (io.WriteCloser, error) {
 }
 
 func (fm *FileManager) CreateLogFiles() (stdOut, stdErr io.Writer, err error) {
+	err = fm.InitDir()
+	if err != nil {
+		return nil, nil, fmt.Errorf("Failed to init dir: %w", err)
+	}
+
 	outFile, err := fm.CreateFile("out.log")
 	if err != nil {
 		return nil, nil, err
