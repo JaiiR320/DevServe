@@ -49,7 +49,7 @@ func (p *Process) Start(fm *FileManager) error {
 	for {
 		if attempts == 60 {
 			p.Stop()
-			return fmt.Errorf("Max attempts to dial")
+			return fmt.Errorf("max attempts to dial")
 		}
 		conn, _ := net.Dial("tcp", "localhost:"+portstr)
 		if conn != nil {
@@ -63,7 +63,7 @@ func (p *Process) Start(fm *FileManager) error {
 	err = saveProcess(fm, p)
 	if err != nil {
 		p.Stop()
-		return fmt.Errorf("Failed to save process: %w", err)
+		return fmt.Errorf("failed to save process: %w", err)
 	}
 	fmt.Println("Dev server started. Listening on " + portstr)
 	return nil

@@ -22,7 +22,7 @@ func Start(port int, bg bool) error {
 		fm = NewGlobalFM()
 		stdout, stderr, err = fm.CreateLogFiles()
 		if err != nil {
-			return fmt.Errorf("Failed creating std log files: %w", err)
+			return fmt.Errorf("failed creating std log files: %w", err)
 		}
 	} else {
 		fm = NewLocalFM()
@@ -39,7 +39,7 @@ func Start(port int, bg bool) error {
 
 	err = process.Start(fm)
 	if err != nil {
-		return fmt.Errorf("Failed to start process: %w", err)
+		return fmt.Errorf("failed to start process: %w", err)
 	}
 
 	tm := NewTailscaleManager(stdout, stderr)
@@ -55,11 +55,11 @@ func Start(port int, bg bool) error {
 
 	err = process.Wait()
 	if err != nil {
-		return fmt.Errorf("Failed on wait: %w", err)
+		return fmt.Errorf("failed on wait: %w", err)
 	}
 	err = tm.Stop(port)
 	if err != nil {
-		return fmt.Errorf("Failed to stop tailscale: %w", err)
+		return fmt.Errorf("failed to stop tailscale: %w", err)
 	}
 	return nil
 }

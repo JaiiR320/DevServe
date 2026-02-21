@@ -14,11 +14,12 @@ import (
 var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "list opened ports and their processes",
-	Long:  `List opened ports nad their processes`,
+	Long:  `List opened ports and their processes`,
 	Run: func(cmd *cobra.Command, args []string) {
 		ports, err := internal.ListProcesses()
 		if err != nil {
 			fmt.Println(err)
+			return
 		}
 		for _, p := range ports {
 			fmt.Println(p)

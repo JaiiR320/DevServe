@@ -13,18 +13,18 @@ import (
 func saveProcess(fm *FileManager, p *Process) error {
 	file, err := fm.CreateFile(strconv.Itoa(p.Port) + ".json")
 	if err != nil {
-		return fmt.Errorf("Failed to create process file: %w", err)
+		return fmt.Errorf("failed to create process file: %w", err)
 	}
 	defer file.Close()
 
 	bytes, err := json.Marshal(p)
 	if err != nil {
-		return fmt.Errorf("Failed marshalling json: %w", err)
+		return fmt.Errorf("failed marshalling json: %w", err)
 	}
 
 	_, err = file.Write(bytes)
 	if err != nil {
-		return fmt.Errorf("Failed write json: %w", err)
+		return fmt.Errorf("failed writing json: %w", err)
 	}
 
 	return nil
@@ -34,7 +34,7 @@ func GetProcessByPort(port int) (*Process, error) {
 	fm := NewGlobalFM()
 	entries, err := os.ReadDir(fm.basePath)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to read directory: %w", err)
+		return nil, fmt.Errorf("failed to read directory: %w", err)
 	}
 
 	for _, entry := range entries {
@@ -46,13 +46,13 @@ func GetProcessByPort(port int) (*Process, error) {
 			if portNum == port {
 				p, err := generateProcess(entry.Name())
 				if err != nil {
-					return nil, fmt.Errorf("Couldn't generate process: %w", err)
+					return nil, fmt.Errorf("couldn't generate process: %w", err)
 				}
 				return p, nil
 			}
 		}
 	}
-	return nil, fmt.Errorf("Couldn't find any processes")
+	return nil, fmt.Errorf("couldn't find any processes")
 }
 
 func generateProcess(fileName string) (*Process, error) {
@@ -65,12 +65,12 @@ func generateProcess(fileName string) (*Process, error) {
 
 	data, err := io.ReadAll(file)
 	if err != nil {
-		return nil, fmt.Errorf("Failed reading file: %w", err)
+		return nil, fmt.Errorf("failed reading file: %w", err)
 	}
 	var p Process
 	err = json.Unmarshal(data, &p)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to unmarshal file: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal file: %w", err)
 	}
 
 	return &p, nil
@@ -80,7 +80,7 @@ func ListProcesses() ([]int, error) {
 	fm := NewGlobalFM()
 	entries, err := os.ReadDir(fm.basePath)
 	if err != nil {
-		return []int{}, fmt.Errorf("Failed to read directory: %w", err)
+		return []int{}, fmt.Errorf("failed to read directory: %w", err)
 	}
 
 	var ports []int
