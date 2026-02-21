@@ -21,7 +21,7 @@ func NewTailscaleManager(stdout, stderr io.Writer) *TailscaleManager {
 func (tm *TailscaleManager) Start(port int) error {
 	portStr := strconv.Itoa(port)
 
-	cmd := exec.Command("tailscale", "serve", "--https", portStr, "--bg", "--yes", portStr)
+	cmd := exec.Command("tailscale", "serve", "--https", portStr, "--bg", "localhost:"+portStr)
 
 	cmd.Stdout = tm.Stdout
 	cmd.Stderr = tm.Stderr
