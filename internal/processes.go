@@ -62,6 +62,7 @@ func (p *Process) Start(fm *FileManager) error {
 
 	err = saveProcess(fm, p)
 	if err != nil {
+		p.Stop()
 		return fmt.Errorf("Failed to save process: %w", err)
 	}
 	fmt.Println("Dev server started. Listening on " + portstr)
@@ -80,11 +81,13 @@ func (p *Process) Wait() error {
 		doneChan <- struct{}{}
 	}()
 
+	// wait for one of these conditions
 	select {
 	case <-sigChan:
-		p.Stop()
 	case <-doneChan:
 	}
+
+	p.Stop()
 	return nil
 }
 
