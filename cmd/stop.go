@@ -6,6 +6,8 @@ package cmd
 import (
 	"devserve/internal"
 	"fmt"
+	"os"
+	"os/exec"
 	"strconv"
 
 	"github.com/spf13/cobra"
@@ -34,6 +36,16 @@ var stopCmd = &cobra.Command{
 		err = internal.RemoveProcess(port)
 		if err != nil {
 			fmt.Printf("Could not remove process: %s", err)
+		}
+
+		c := exec.Command("tailscale", "serve", "--https", portStr, "off")
+
+		c.Stdout = os.Stdout
+		c.Stderr = os.Stderr
+
+		err = c.Run()
+		if err != nil {
+			fmt.Println("Couldn not stop tailscale, %w", err)
 		}
 	},
 }
