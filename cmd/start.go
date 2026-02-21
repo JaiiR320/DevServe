@@ -10,11 +10,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// serveCmd represents the serve command
-var serveCmd = &cobra.Command{
-	Use:   "serve",
-	Short: "server your dev server with tailscale",
-	Long: `Serve your dev server with a port and hostname,
+// startCmd represents the start command
+var startCmd = &cobra.Command{
+	Use:   "start",
+	Short: "start your dev server with tailscale",
+	Long: `Start your dev server with a port and hostname,
 	and use tailscale to serve the port. Provides your MagicDNS url
 	and logs.`,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -30,7 +30,7 @@ var serveCmd = &cobra.Command{
 			return
 		}
 
-		err = internal.Serve(port, bg)
+		err = internal.Start(port, bg)
 		if err != nil {
 			fmt.Println(err)
 			return
@@ -39,7 +39,7 @@ var serveCmd = &cobra.Command{
 }
 
 func init() {
-	serveCmd.Flags().IntP("port", "p", 3000, "port to use")
-	serveCmd.Flags().Bool("bg", false, "run in background")
-	rootCmd.AddCommand(serveCmd)
+	startCmd.Flags().IntP("port", "p", 3000, "port to use")
+	startCmd.Flags().Bool("bg", false, "run in background")
+	rootCmd.AddCommand(startCmd)
 }

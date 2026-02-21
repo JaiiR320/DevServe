@@ -7,7 +7,8 @@ import (
 	"strings"
 )
 
-func Serve(port int, bg bool) error {
+// Start detects the package manager, starts the dev server, and serves it over Tailscale.
+func Start(port int, bg bool) error {
 	pm, err := DetectPackageManager()
 	if err != nil {
 		return err
