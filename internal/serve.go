@@ -33,13 +33,6 @@ func Serve(port int, bg bool) error {
 		stderr = os.Stderr
 	}
 
-	tm := NewTailscaleManager(stdout, stderr)
-
-	err = tm.Start(port)
-	if err != nil {
-		return fmt.Errorf("failed to start Tailscale: %w", err)
-	}
-
 	command := PMToCommand[pm]
 	args := strings.Split(command, " ")
 
@@ -47,18 +40,29 @@ func Serve(port int, bg bool) error {
 
 	process.SetOutputs(stdout, stderr)
 
-	if bg {
-		err = process.StartBG(fm)
-		if err != nil {
-			return fmt.Errorf("Failed to start process: %w", err)
-		}
-		return nil
-	}
-
-	err = process.Start()
+	err = process.Start(fm)
 	if err != nil {
 		return fmt.Errorf("Failed to start process: %w", err)
 	}
 
-	return tm.Stop(port)
+	tm := NewTailscaleManager(stdout, stderr)
+
+	err = tm.Start(port)
+	if err != nil {
+		return fmt.Errorf("failed to start Tailscale: %w", err)
+	}
+
+	if bg {
+		return nil
+	}
+
+	err = process.Wait()
+	if err != nil {
+		return fmt.Errorf("Failed on wait: %w", err)
+	}
+	err = tm.Stop(port)
+	if err != nil {
+		return fmt.Errorf("Failed to stop tailscale: %w", err)
+	}
+	return nil
 }
