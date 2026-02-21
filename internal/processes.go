@@ -73,8 +73,7 @@ func (p *Process) Wait() error {
 	sigChan := make(chan os.Signal, 1)
 	doneChan := make(chan struct{}, 1)
 
-	signal.Ignore(os.Interrupt)
-	signal.Notify(sigChan, os.Interrupt)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGHUP)
 
 	go func() {
 		p.Cmd.Wait()
