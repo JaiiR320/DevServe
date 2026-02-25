@@ -37,6 +37,11 @@ func handleServe(args map[string]any) *internal.Response {
 		return internal.ErrResponse(fmt.Errorf("invalid port type"))
 	}
 
+	if err := internal.CheckPortAvailable(port); err != nil {
+		log.Printf("port %d unavailable: %s", port, err)
+		return internal.ErrResponse(err)
+	}
+
 	command, ok := args["command"].(string)
 	if !ok || command == "" {
 		return internal.ErrResponse(fmt.Errorf("missing or invalid 'command' argument"))

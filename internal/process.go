@@ -1,13 +1,16 @@
 package internal
 
 import (
+	"fmt"
 	"log"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 )
 
 type Process struct {
@@ -42,6 +45,16 @@ func CreateProcess(name string, port int, dir string) (*Process, error) {
 		Stdout: outFile,
 		Stderr: errFile,
 	}, nil
+}
+
+func CheckPortAvailable(port int) error {
+	addr := "localhost:" + strconv.Itoa(port)
+	conn, err := net.DialTimeout("tcp", addr, 500*time.Millisecond)
+	if err == nil {
+		conn.Close()
+		return fmt.Errorf("port %d is already in use", port)
+	}
+	return nil
 }
 
 func (p *Process) Start(command string) error {
