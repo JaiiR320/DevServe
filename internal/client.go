@@ -4,19 +4,18 @@ import (
 	"net"
 )
 
-// Send a message to the daemon
-func Send(msg string) error {
+// Send a request to the daemon and return the response
+func Send(req *Request) (*Response, error) {
 	conn, err := net.Dial("unix", Socket)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer conn.Close()
 
-	data := []byte(msg)
-
-	_, err = conn.Write(data)
+	err = SendRequest(conn, req)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return nil
+
+	return ReadResponse(conn)
 }

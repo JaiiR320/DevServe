@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"strings"
 )
 
 var processes map[string]*internal.Process
@@ -48,59 +47,46 @@ func Start() error {
 }
 
 func Stop() error {
-	conn, err := net.Dial("unix", internal.Socket)
+	req := &internal.Request{Action: "shutdown"}
+	resp, err := internal.Send(req)
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-
-	_, err = conn.Write([]byte("stop"))
-	if err != nil {
-		return err
+	if !resp.OK {
+		return fmt.Errorf("daemon shutdown failed: %s", resp.Error)
 	}
-
 	return nil
 }
 
 func handleConn(conn net.Conn, stop chan struct{}) {
 	defer conn.Close()
 
-	buf := make([]byte, 1024)
-	n, err := conn.Read(buf)
+	req, err := internal.ReadRequest(conn)
 	if err != nil {
-		fmt.Printf("Error reading from connection: %s\n", err)
+		fmt.Printf("Error reading request: %s\n", err)
+		internal.SendResponse(conn, internal.ErrResponse(err))
 		return
 	}
-	data := string(buf[:n])
-	fmt.Printf("Received: %s\n", data)
 
-	if data == "stop" {
+	fmt.Printf("Received: %s\n", req.Action)
+
+	if req.Action == "shutdown" {
+		internal.SendResponse(conn, internal.OkResponse("daemon stopping"))
 		stop <- struct{}{}
 		return
 	}
 
-	params := strings.Split(data, "|")
-	args := params[1:]
-
-	switch params[0] {
+	var resp *internal.Response
+	switch req.Action {
 	case "serve":
-		err := handleServe(args)
-		if err != nil {
-			fmt.Println(err)
-		}
+		resp = handleServe(req.Args)
 	case "stop":
-		err := handleStop(args)
-		if err != nil {
-			fmt.Print(err)
-		}
+		resp = handleStop(req.Args)
 	case "list":
-		err := handleList(args)
-		if err != nil {
-			fmt.Print(err)
-		}
+		resp = handleList(req.Args)
+	default:
+		resp = internal.ErrResponse(fmt.Errorf("unknown action: %s", req.Action))
 	}
-}
 
-func Send() {
-
+	internal.SendResponse(conn, resp)
 }

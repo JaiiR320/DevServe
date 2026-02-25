@@ -2,48 +2,94 @@ package daemon
 
 import (
 	"devserve/internal"
+	"encoding/json"
 	"fmt"
 	"strconv"
 )
 
-func handleServe(args []string) error {
-	name := args[0]
-	if _, ok := processes[name]; ok {
-		return fmt.Errorf("process name already in use")
+func handleServe(args map[string]any) *internal.Response {
+	name, ok := args["name"].(string)
+	if !ok || name == "" {
+		return internal.ErrResponse(fmt.Errorf("missing or invalid 'name' argument"))
 	}
 
-	port, err := strconv.Atoi(args[1])
-	if err != nil {
-		return err
+	if _, exists := processes[name]; exists {
+		return internal.ErrResponse(fmt.Errorf("process name already in use"))
 	}
-	command := args[2]
+
+	portVal, ok := args["port"]
+	if !ok {
+		return internal.ErrResponse(fmt.Errorf("missing 'port' argument"))
+	}
+	// JSON numbers decode as float64
+	var port int
+	switch v := portVal.(type) {
+	case float64:
+		port = int(v)
+	case string:
+		var err error
+		port, err = strconv.Atoi(v)
+		if err != nil {
+			return internal.ErrResponse(fmt.Errorf("invalid port: %w", err))
+		}
+	default:
+		return internal.ErrResponse(fmt.Errorf("invalid port type"))
+	}
+
+	command, ok := args["command"].(string)
+	if !ok || command == "" {
+		return internal.ErrResponse(fmt.Errorf("missing or invalid 'command' argument"))
+	}
+
 	p, err := internal.CreateProcess(name, port)
 	if err != nil {
-		return err
+		return internal.ErrResponse(err)
 	}
+
 	err = p.Start(command)
 	if err != nil {
-		return err
+		return internal.ErrResponse(err)
 	}
+
 	processes[p.Name] = p
-	return nil
+	return internal.OkResponse(fmt.Sprintf("process '%s' started on port %d", name, port))
 }
 
-func handleStop(args []string) error {
-	name := args[0]
-	if p, ok := processes[name]; ok {
-		err := p.Stop()
-		if err != nil {
-			return fmt.Errorf("couldn't stop process: %w", err)
-		}
+func handleStop(args map[string]any) *internal.Response {
+	name, ok := args["name"].(string)
+	if !ok || name == "" {
+		return internal.ErrResponse(fmt.Errorf("missing or invalid 'name' argument"))
 	}
-	return nil
+
+	p, exists := processes[name]
+	if !exists {
+		return internal.ErrResponse(fmt.Errorf("process '%s' not found", name))
+	}
+
+	err := p.Stop()
+	if err != nil {
+		return internal.ErrResponse(fmt.Errorf("couldn't stop process: %w", err))
+	}
+
+	delete(processes, name)
+	return internal.OkResponse(fmt.Sprintf("process '%s' stopped", name))
 }
 
-func handleList(args []string) error {
+func handleList(args map[string]any) *internal.Response {
+	type entry struct {
+		Name string `json:"name"`
+		Port int    `json:"port"`
+	}
+
+	entries := make([]entry, 0, len(processes))
 	for _, v := range processes {
-		portstr := strconv.Itoa(v.Port)
-		fmt.Println(v.Name + " | " + portstr)
+		entries = append(entries, entry{Name: v.Name, Port: v.Port})
 	}
-	return nil
+
+	data, err := json.Marshal(entries)
+	if err != nil {
+		return internal.ErrResponse(err)
+	}
+
+	return internal.OkResponse(string(data))
 }
