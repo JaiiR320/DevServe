@@ -1,9 +1,7 @@
 package internal
 
 import (
-	"fmt"
 	"log"
-	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -47,16 +45,6 @@ func CreateProcess(name string, port int, dir string) (*Process, error) {
 	}, nil
 }
 
-func CheckPortAvailable(port int) error {
-	addr := "localhost:" + strconv.Itoa(port)
-	conn, err := net.DialTimeout("tcp", addr, 500*time.Millisecond)
-	if err == nil {
-		conn.Close()
-		return fmt.Errorf("port %d is already in use", port)
-	}
-	return nil
-}
-
 func (p *Process) Start(command string) error {
 	args := strings.Split(command, " ")
 	p.Cmd = exec.Command(args[0], args[1:]...)
@@ -74,6 +62,12 @@ func (p *Process) Start(command string) error {
 		return err
 	}
 
+	log.Printf("waiting for port %d...", p.Port)
+	if err := WaitForPort(p.Port, 15*time.Second); err != nil {
+		syscall.Kill(-p.Cmd.Process.Pid, syscall.SIGTERM)
+		return err
+	}
+
 	portStr := strconv.Itoa(p.Port)
 	cmd := exec.Command("tailscale", "serve", "--https", portStr, "--bg", "localhost:"+portStr)
 	err = cmd.Run()
@@ -88,6 +82,7 @@ func (p *Process) Start(command string) error {
 }
 
 func (p *Process) Stop() error {
+	log.Printf("stopping process %s (pid %d)", p.Name, p.Cmd.Process.Pid)
 	err := syscall.Kill(-p.Cmd.Process.Pid, syscall.SIGTERM)
 	if err != nil {
 		return err
@@ -101,13 +96,14 @@ func (p *Process) Stop() error {
 
 	select {
 	case <-done:
-		// process exited
+		log.Printf("process %s exited gracefully", p.Name)
 	case <-time.After(5 * time.Second):
 		log.Printf("process %s did not exit after SIGTERM, sending SIGKILL", p.Name)
 		if killErr := syscall.Kill(-p.Cmd.Process.Pid, syscall.SIGKILL); killErr != nil {
 			log.Printf("failed to SIGKILL process %s: %s", p.Name, killErr)
 		}
 		<-done // wait for Wait() to return after SIGKILL
+		log.Printf("process %s killed with SIGKILL", p.Name)
 	}
 
 	p.Stdout.Close()
