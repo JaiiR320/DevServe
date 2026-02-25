@@ -1,29 +1,16 @@
-/*
-Copyright © 2026 NAME HERE <EMAIL ADDRESS>
-*/
 package cmd
 
 import (
 	"devserve/internal"
-	"fmt"
 
 	"github.com/spf13/cobra"
 )
 
-// listCmd represents the list command
 var listCmd = &cobra.Command{
 	Use:   "list",
-	Short: "list opened ports and their processes",
-	Long:  `List opened ports and their processes`,
-	Run: func(cmd *cobra.Command, args []string) {
-		ports, err := internal.ListProcesses()
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-		for _, p := range ports {
-			fmt.Println(p)
-		}
+	Short: "List processes",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return internal.Send("list")
 	},
 }
 
