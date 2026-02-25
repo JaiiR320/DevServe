@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"os/exec"
 	"os/signal"
 	"strings"
 	"sync"
@@ -19,12 +20,72 @@ var (
 	mu        sync.RWMutex
 )
 
-func Start() error {
+func Start(background bool) error {
+	if background {
+		return startInBackground()
+	}
+	return startForeground()
+}
+
+func startInBackground() error {
+	// Create log directory
+	err := os.MkdirAll("/tmp/devserve", 0755)
+	if err != nil {
+		return fmt.Errorf("failed to create log directory: %w", err)
+	}
+
+	// Create log file (truncate if exists)
+	logFile, err := os.Create("/tmp/devserve/out.log")
+	if err != nil {
+		return fmt.Errorf("failed to open log file: %w", err)
+	}
+	defer logFile.Close()
+
+	// Check if daemon already running
+	conn, err := net.Dial("unix", internal.Socket)
+	if err == nil {
+		conn.Close()
+		return errors.New("daemon is already running")
+	}
+
+	// Get the current executable path
+	execPath, err := os.Executable()
+	if err != nil {
+		return fmt.Errorf("failed to get executable path: %w", err)
+	}
+
+	// Fork process
+	cmd := exec.Command(execPath, "daemon", "start", "--foreground")
+	cmd.Stdout = logFile
+	cmd.Stderr = logFile
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		Setpgid: true,
+	}
+
+	err = cmd.Start()
+	if err != nil {
+		return fmt.Errorf("failed to start daemon: %w", err)
+	}
+
+	// Wait a moment and verify daemon started
+	time.Sleep(100 * time.Millisecond)
+	conn, err = net.Dial("unix", internal.Socket)
+	if err != nil {
+		return errors.New("daemon failed to start")
+	}
+	conn.Close()
+
+	fmt.Println("daemon started (logs: /tmp/devserve/out.log)")
+	return nil
+}
+
+func startForeground() error {
+	internal.InitLogger()
 	processes = make(map[string]*internal.Process)
 	conn, err := net.Dial("unix", internal.Socket)
 	if err == nil {
 		conn.Close()
-		return errors.New("Another daemon is already running")
+		return errors.New("another daemon is already running")
 	}
 	os.Remove(internal.Socket)
 

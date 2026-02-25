@@ -1,11 +1,7 @@
-/*
-Copyright © 2026 NAME HERE <EMAIL ADDRESS>
-*/
 package cmd
 
 import (
 	"devserve/daemon"
-	"devserve/internal"
 
 	"github.com/spf13/cobra"
 )
@@ -16,13 +12,14 @@ var daemonCmd = &cobra.Command{
 	Short: "Interact with the daemon",
 }
 
+var foreground bool
+
 var daemonCmdStart = &cobra.Command{
 	Use:   "start",
 	Args:  cobra.NoArgs,
 	Short: "Start the daemon",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		internal.InitLogger()
-		return daemon.Start()
+		return daemon.Start(!foreground)
 	},
 }
 
@@ -36,6 +33,7 @@ var daemonCmdStop = &cobra.Command{
 }
 
 func init() {
+	daemonCmdStart.Flags().BoolVarP(&foreground, "foreground", "f", false, "Run daemon in foreground")
 	daemonCmd.AddCommand(daemonCmdStart, daemonCmdStop)
 	rootCmd.AddCommand(daemonCmd)
 }
