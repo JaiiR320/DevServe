@@ -67,13 +67,16 @@ func startInBackground() error {
 		return fmt.Errorf("failed to start daemon: %w", err)
 	}
 
-	// Wait a moment and verify daemon started
+	// Wait a moment and verify daemon started with ping
 	time.Sleep(100 * time.Millisecond)
-	conn, err = net.Dial("unix", internal.Socket)
+	pingReq := &internal.Request{Action: "ping"}
+	resp, err := internal.Send(pingReq)
 	if err != nil {
-		return errors.New("daemon failed to start")
+		return fmt.Errorf("daemon failed to start: %w", err)
 	}
-	conn.Close()
+	if !resp.OK || resp.Data != "pong" {
+		return errors.New("daemon health check failed")
+	}
 
 	fmt.Println("daemon started (logs: /tmp/devserve/out.log)")
 	return nil
@@ -229,6 +232,8 @@ func handleConn(conn net.Conn, stop chan struct{}) {
 
 	var resp *internal.Response
 	switch req.Action {
+	case "ping":
+		resp = handlePing(req.Args)
 	case "serve":
 		resp = handleServe(req.Args)
 	case "stop":

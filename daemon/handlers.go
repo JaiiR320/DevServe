@@ -8,6 +8,10 @@ import (
 	"strconv"
 )
 
+func handlePing(args map[string]any) *internal.Response {
+	return internal.OkResponse("pong")
+}
+
 func handleServe(args map[string]any) *internal.Response {
 	name, ok := args["name"].(string)
 	if !ok || name == "" {
