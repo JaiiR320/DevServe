@@ -6,7 +6,7 @@ package cmd
 import (
 	"devserve/internal"
 	"fmt"
-	"os/exec"
+	"os"
 	"strconv"
 
 	"github.com/spf13/cobra"
@@ -17,6 +17,7 @@ var stopCmd = &cobra.Command{
 	Use:   "stop",
 	Short: "Stop a process based on a port",
 	Long:  `Stop a process based on a port`,
+	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		portStr := args[0]
 		port, err := strconv.Atoi(portStr)
@@ -26,7 +27,7 @@ var stopCmd = &cobra.Command{
 		}
 		p, err := internal.GetProcessByPort(port)
 		if err != nil {
-			fmt.Printf("Could not find a process with that port, %s", err)
+			fmt.Printf("could not find a process with that port: %v\n", err)
 			return
 		}
 		fmt.Println("Stopping dev server on port ", portStr)
@@ -35,15 +36,13 @@ var stopCmd = &cobra.Command{
 		// remove files
 		err = internal.RemoveProcess(port)
 		if err != nil {
-			fmt.Printf("Could not remove process: %s", err)
+			fmt.Printf("could not remove process: %v\n", err)
 		}
 
-		c := exec.Command("tailscale", "serve", "--https", portStr, "off")
-
-		fmt.Println("Stopping tailscale on port ", portStr)
-		err = c.Run()
+		tm := internal.NewTailscaleManager(os.Stdout, os.Stderr)
+		err = tm.Stop(port)
 		if err != nil {
-			fmt.Println("Couldn not stop tailscale, %w", err)
+			fmt.Printf("could not stop tailscale: %v\n", err)
 		}
 	},
 }
