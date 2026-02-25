@@ -7,9 +7,17 @@ import (
 	"log"
 	"net"
 	"os"
+	"os/signal"
+	"strings"
+	"sync"
+	"syscall"
+	"time"
 )
 
-var processes map[string]*internal.Process
+var (
+	processes map[string]*internal.Process
+	mu        sync.RWMutex
+)
 
 func Start() error {
 	processes = make(map[string]*internal.Process)
@@ -28,6 +36,15 @@ func Start() error {
 	log.Println("daemon started")
 	stopChan := make(chan struct{}, 1)
 
+	// Handle OS signals for graceful shutdown
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		sig := <-sigChan
+		log.Printf("received signal: %s", sig)
+		stopChan <- struct{}{}
+	}()
+
 	go func() {
 		<-stopChan
 		listener.Close()
@@ -44,6 +61,13 @@ func Start() error {
 		}
 		go handleConn(conn, stopChan)
 	}
+
+	// Stop all running child processes before exiting
+	failed := stopAllProcesses(15 * time.Second)
+	if len(failed) > 0 {
+		log.Printf("failed to stop processes on ports: %s", strings.Join(failed, ", "))
+	}
+
 	os.Remove(internal.Socket)
 	return nil
 }
@@ -60,6 +84,65 @@ func Stop() error {
 	return nil
 }
 
+// stopAllProcesses stops all running child processes concurrently.
+// Returns a list of port strings for processes that failed to stop within the timeout.
+func stopAllProcesses(timeout time.Duration) []string {
+	mu.Lock()
+	snapshot := make(map[string]*internal.Process, len(processes))
+	for k, v := range processes {
+		snapshot[k] = v
+	}
+	mu.Unlock()
+
+	if len(snapshot) == 0 {
+		return nil
+	}
+
+	type result struct {
+		name string
+		port int
+		err  error
+	}
+
+	results := make(chan result, len(snapshot))
+	for name, p := range snapshot {
+		go func(name string, p *internal.Process) {
+			err := p.Stop()
+			results <- result{name: name, port: p.Port, err: err}
+		}(name, p)
+	}
+
+	var failed []string
+	timer := time.After(timeout)
+	remaining := len(snapshot)
+
+	for remaining > 0 {
+		select {
+		case r := <-results:
+			remaining--
+			if r.err != nil {
+				log.Printf("failed to stop %s (port %d): %s", r.name, r.port, r.err)
+				failed = append(failed, fmt.Sprintf("%d", r.port))
+			} else {
+				log.Printf("stopped %s (port %d)", r.name, r.port)
+				mu.Lock()
+				delete(processes, r.name)
+				mu.Unlock()
+			}
+		case <-timer:
+			// Collect any remaining processes as failed
+			mu.RLock()
+			for _, p := range processes {
+				failed = append(failed, fmt.Sprintf("%d", p.Port))
+			}
+			mu.RUnlock()
+			return failed
+		}
+	}
+
+	return failed
+}
+
 func handleConn(conn net.Conn, stop chan struct{}) {
 	defer conn.Close()
 
@@ -70,10 +153,15 @@ func handleConn(conn net.Conn, stop chan struct{}) {
 		return
 	}
 
-	log.Println("request:", req.Action)
-
 	if req.Action == "shutdown" {
-		internal.SendResponse(conn, internal.OkResponse("daemon stopping"))
+		log.Println("shutdown requested, stopping all processes")
+		failed := stopAllProcesses(15 * time.Second)
+		if len(failed) > 0 {
+			msg := fmt.Sprintf("daemon stopping, failed to stop ports: %s", strings.Join(failed, ", "))
+			internal.SendResponse(conn, internal.OkResponse(msg))
+		} else {
+			internal.SendResponse(conn, internal.OkResponse("daemon stopped, all processes terminated"))
+		}
 		stop <- struct{}{}
 		return
 	}

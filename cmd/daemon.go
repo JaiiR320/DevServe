@@ -21,9 +21,7 @@ var daemonCmdStart = &cobra.Command{
 	Args:  cobra.NoArgs,
 	Short: "Start the daemon",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if err := internal.InitLogger(); err != nil {
-			return err
-		}
+		internal.InitLogger()
 		return daemon.Start()
 	},
 }

@@ -14,7 +14,10 @@ func handleServe(args map[string]any) *internal.Response {
 		return internal.ErrResponse(fmt.Errorf("missing or invalid 'name' argument"))
 	}
 
-	if _, exists := processes[name]; exists {
+	mu.RLock()
+	_, exists := processes[name]
+	mu.RUnlock()
+	if exists {
 		return internal.ErrResponse(fmt.Errorf("process name already in use"))
 	}
 
@@ -49,8 +52,6 @@ func handleServe(args map[string]any) *internal.Response {
 
 	cwd, _ := args["cwd"].(string) // optional, empty string if not provided
 
-	log.Printf("serving %s on port %d", name, port)
-
 	p, err := internal.CreateProcess(name, port, cwd)
 	if err != nil {
 		log.Printf("failed to create process %s: %s", name, err)
@@ -63,7 +64,10 @@ func handleServe(args map[string]any) *internal.Response {
 		return internal.ErrResponse(err)
 	}
 
+	mu.Lock()
 	processes[p.Name] = p
+	mu.Unlock()
+	log.Printf("started %s on port %d", name, port)
 	return internal.OkResponse(fmt.Sprintf("process '%s' started on port %d", name, port))
 }
 
@@ -73,7 +77,9 @@ func handleStop(args map[string]any) *internal.Response {
 		return internal.ErrResponse(fmt.Errorf("missing or invalid 'name' argument"))
 	}
 
+	mu.RLock()
 	p, exists := processes[name]
+	mu.RUnlock()
 	if !exists {
 		return internal.ErrResponse(fmt.Errorf("process '%s' not found", name))
 	}
@@ -84,8 +90,10 @@ func handleStop(args map[string]any) *internal.Response {
 		return internal.ErrResponse(fmt.Errorf("couldn't stop process: %w", err))
 	}
 
+	mu.Lock()
 	delete(processes, name)
-	log.Printf("stopped %s", name)
+	mu.Unlock()
+	log.Printf("stopped %s (port %d)", name, p.Port)
 	return internal.OkResponse(fmt.Sprintf("process '%s' stopped", name))
 }
 
@@ -95,11 +103,12 @@ func handleList(args map[string]any) *internal.Response {
 		Port int    `json:"port"`
 	}
 
-	log.Printf("listed %d processes", len(processes))
+	mu.RLock()
 	entries := make([]entry, 0, len(processes))
 	for _, v := range processes {
 		entries = append(entries, entry{Name: v.Name, Port: v.Port})
 	}
+	mu.RUnlock()
 
 	data, err := json.Marshal(entries)
 	if err != nil {

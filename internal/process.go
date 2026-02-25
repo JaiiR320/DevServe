@@ -58,7 +58,6 @@ func CheckPortAvailable(port int) error {
 }
 
 func (p *Process) Start(command string) error {
-	log.Println("starting process", p.Name)
 	args := strings.Split(command, " ")
 	p.Cmd = exec.Command(args[0], args[1:]...)
 
@@ -76,7 +75,6 @@ func (p *Process) Start(command string) error {
 	}
 
 	portStr := strconv.Itoa(p.Port)
-	log.Println("starting tailscale on port", portStr)
 	cmd := exec.Command("tailscale", "serve", "--https", portStr, "--bg", "localhost:"+portStr)
 	err = cmd.Run()
 	if err != nil {
@@ -90,17 +88,32 @@ func (p *Process) Start(command string) error {
 }
 
 func (p *Process) Stop() error {
-	log.Println("stopping process", p.Name)
 	err := syscall.Kill(-p.Cmd.Process.Pid, syscall.SIGTERM)
 	if err != nil {
 		return err
+	}
+
+	// Wait for the process to exit with a 5s timeout, escalate to SIGKILL if needed
+	done := make(chan error, 1)
+	go func() {
+		done <- p.Cmd.Wait()
+	}()
+
+	select {
+	case <-done:
+		// process exited
+	case <-time.After(5 * time.Second):
+		log.Printf("process %s did not exit after SIGTERM, sending SIGKILL", p.Name)
+		if killErr := syscall.Kill(-p.Cmd.Process.Pid, syscall.SIGKILL); killErr != nil {
+			log.Printf("failed to SIGKILL process %s: %s", p.Name, killErr)
+		}
+		<-done // wait for Wait() to return after SIGKILL
 	}
 
 	p.Stdout.Close()
 	p.Stderr.Close()
 
 	portStr := strconv.Itoa(p.Port)
-	log.Println("stopping tailscale")
 	cmd := exec.Command("tailscale", "serve", "--https", portStr, "off")
 	err = cmd.Run()
 	if err != nil {
