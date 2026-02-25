@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"devserve/daemon"
+	"devserve/internal"
 
 	"github.com/spf13/cobra"
 )
@@ -19,6 +20,9 @@ var daemonCmdStart = &cobra.Command{
 	Use:   "start",
 	Short: "Start the daemon",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := internal.InitLogger(); err != nil {
+			return err
+		}
 		return daemon.Start()
 	},
 }

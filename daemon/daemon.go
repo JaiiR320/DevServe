@@ -4,6 +4,7 @@ import (
 	"devserve/internal"
 	"errors"
 	"fmt"
+	"log"
 	"net"
 	"os"
 )
@@ -24,6 +25,7 @@ func Start() error {
 		return err
 	}
 	defer listener.Close()
+	log.Println("daemon started")
 	stopChan := make(chan struct{}, 1)
 
 	go func() {
@@ -35,7 +37,7 @@ func Start() error {
 		conn, err := listener.Accept()
 		if err != nil {
 			if errors.Is(err, net.ErrClosed) {
-				fmt.Println("closing")
+				log.Println("daemon shutting down")
 				break
 			}
 			continue
@@ -63,12 +65,12 @@ func handleConn(conn net.Conn, stop chan struct{}) {
 
 	req, err := internal.ReadRequest(conn)
 	if err != nil {
-		fmt.Printf("Error reading request: %s\n", err)
+		log.Println("error reading request:", err)
 		internal.SendResponse(conn, internal.ErrResponse(err))
 		return
 	}
 
-	fmt.Printf("Received: %s\n", req.Action)
+	log.Println("request:", req.Action)
 
 	if req.Action == "shutdown" {
 		internal.SendResponse(conn, internal.OkResponse("daemon stopping"))

@@ -1,9 +1,10 @@
 package internal
 
 import (
-	"fmt"
+	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
@@ -13,17 +14,23 @@ type Process struct {
 	Name   string
 	Cmd    *exec.Cmd
 	Port   int
+	Dir    string
 	Stdout *os.File
 	Stderr *os.File
 }
 
 // initialize out files, and process struct
-func CreateProcess(name string, port int) (*Process, error) {
-	outFile, err := os.Create("/tmp/" + name + ".out.log")
+func CreateProcess(name string, port int, dir string) (*Process, error) {
+	logDir := filepath.Join(dir, ".devserve")
+	if err := os.MkdirAll(logDir, 0755); err != nil {
+		return nil, err
+	}
+
+	outFile, err := os.Create(filepath.Join(logDir, "out.log"))
 	if err != nil {
 		return nil, err
 	}
-	errFile, err := os.Create("/tmp/" + name + ".err.log")
+	errFile, err := os.Create(filepath.Join(logDir, "err.log"))
 	if err != nil {
 		return nil, err
 	}
@@ -31,18 +38,22 @@ func CreateProcess(name string, port int) (*Process, error) {
 	return &Process{
 		Name:   name,
 		Port:   port,
+		Dir:    dir,
 		Stdout: outFile,
 		Stderr: errFile,
 	}, nil
 }
 
 func (p *Process) Start(command string) error {
-	fmt.Println("Starting process", p.Name)
+	log.Println("starting process", p.Name)
 	args := strings.Split(command, " ")
 	p.Cmd = exec.Command(args[0], args[1:]...)
 
 	p.Cmd.Stderr = p.Stderr
 	p.Cmd.Stdout = p.Stdout
+	if p.Dir != "" {
+		p.Cmd.Dir = p.Dir
+	}
 
 	p.Cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
@@ -52,7 +63,7 @@ func (p *Process) Start(command string) error {
 	}
 
 	portStr := strconv.Itoa(p.Port)
-	fmt.Println("Starting tailscale on port", portStr)
+	log.Println("starting tailscale on port", portStr)
 	cmd := exec.Command("tailscale", "serve", "--https", portStr, "--bg", "localhost:"+portStr)
 	err = cmd.Run()
 	if err != nil {
@@ -66,7 +77,7 @@ func (p *Process) Start(command string) error {
 }
 
 func (p *Process) Stop() error {
-	fmt.Println("Stopping process", p.Name)
+	log.Println("stopping process", p.Name)
 	err := syscall.Kill(-p.Cmd.Process.Pid, syscall.SIGTERM)
 	if err != nil {
 		return err
@@ -76,7 +87,7 @@ func (p *Process) Stop() error {
 	p.Stderr.Close()
 
 	portStr := strconv.Itoa(p.Port)
-	fmt.Println("Stopping tailscale")
+	log.Println("stopping tailscale")
 	cmd := exec.Command("tailscale", "serve", "--https", portStr, "off")
 	err = cmd.Run()
 	if err != nil {

@@ -4,6 +4,7 @@ import (
 	"devserve/internal"
 	"encoding/json"
 	"fmt"
+	"log"
 	"strconv"
 )
 
@@ -41,13 +42,19 @@ func handleServe(args map[string]any) *internal.Response {
 		return internal.ErrResponse(fmt.Errorf("missing or invalid 'command' argument"))
 	}
 
-	p, err := internal.CreateProcess(name, port)
+	cwd, _ := args["cwd"].(string) // optional, empty string if not provided
+
+	log.Printf("serving %s on port %d", name, port)
+
+	p, err := internal.CreateProcess(name, port, cwd)
 	if err != nil {
+		log.Printf("failed to create process %s: %s", name, err)
 		return internal.ErrResponse(err)
 	}
 
 	err = p.Start(command)
 	if err != nil {
+		log.Printf("failed to start %s: %s", name, err)
 		return internal.ErrResponse(err)
 	}
 
@@ -68,10 +75,12 @@ func handleStop(args map[string]any) *internal.Response {
 
 	err := p.Stop()
 	if err != nil {
+		log.Printf("failed to stop %s: %s", name, err)
 		return internal.ErrResponse(fmt.Errorf("couldn't stop process: %w", err))
 	}
 
 	delete(processes, name)
+	log.Printf("stopped %s", name)
 	return internal.OkResponse(fmt.Sprintf("process '%s' stopped", name))
 }
 
@@ -81,6 +90,7 @@ func handleList(args map[string]any) *internal.Response {
 		Port int    `json:"port"`
 	}
 
+	log.Printf("listed %d processes", len(processes))
 	entries := make([]entry, 0, len(processes))
 	for _, v := range processes {
 		entries = append(entries, entry{Name: v.Name, Port: v.Port})
