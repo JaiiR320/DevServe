@@ -18,6 +18,7 @@ var daemonCmd = &cobra.Command{
 
 var daemonCmdStart = &cobra.Command{
 	Use:   "start",
+	Args:  cobra.NoArgs,
 	Short: "Start the daemon",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := internal.InitLogger(); err != nil {
@@ -29,6 +30,7 @@ var daemonCmdStart = &cobra.Command{
 
 var daemonCmdStop = &cobra.Command{
 	Use:   "stop",
+	Args:  cobra.NoArgs,
 	Short: "Stop the daemon",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return daemon.Stop()

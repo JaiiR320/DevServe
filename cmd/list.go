@@ -10,6 +10,7 @@ import (
 
 var listCmd = &cobra.Command{
 	Use:   "list",
+	Args:  cobra.NoArgs,
 	Short: "List processes",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		req := &internal.Request{

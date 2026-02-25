@@ -10,6 +10,7 @@ import (
 
 var stopCmd = &cobra.Command{
 	Use:   "stop [name]",
+	Args:  cobra.ExactArgs(1),
 	Short: "Stop your dev server and tailscale",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		req := &internal.Request{

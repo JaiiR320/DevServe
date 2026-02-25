@@ -11,6 +11,7 @@ import (
 
 var serveCmd = &cobra.Command{
 	Use:   "serve [name] [port] [command]",
+	Args:  cobra.ExactArgs(3),
 	Short: "Serve your dev server with tailscale",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cwd, err := os.Getwd()
