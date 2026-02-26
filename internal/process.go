@@ -1,12 +1,14 @@
 package internal
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -18,6 +20,10 @@ type Process struct {
 	Dir    string
 	Stdout *os.File
 	Stderr *os.File
+
+	mu      sync.Mutex
+	started bool
+	stopped bool
 }
 
 // initialize out files, and process struct
@@ -59,12 +65,18 @@ func (p *Process) Start(command string) error {
 
 	err := p.Cmd.Start()
 	if err != nil {
+		p.closeLogs()
 		return err
 	}
+
+	p.mu.Lock()
+	p.started = true
+	p.mu.Unlock()
 
 	log.Printf("waiting for port %d...", p.Port)
 	if err := WaitForPort(p.Port, 15*time.Second); err != nil {
 		syscall.Kill(-p.Cmd.Process.Pid, syscall.SIGTERM)
+		p.closeLogs()
 		return err
 	}
 
@@ -73,6 +85,7 @@ func (p *Process) Start(command string) error {
 	err = cmd.Run()
 	if err != nil {
 		sysErr := syscall.Kill(-p.Cmd.Process.Pid, syscall.SIGTERM)
+		p.closeLogs()
 		if sysErr != nil {
 			return sysErr
 		}
@@ -82,6 +95,18 @@ func (p *Process) Start(command string) error {
 }
 
 func (p *Process) Stop() error {
+	p.mu.Lock()
+	if !p.started {
+		p.mu.Unlock()
+		return fmt.Errorf("process '%s' has not been started", p.Name)
+	}
+	if p.stopped {
+		p.mu.Unlock()
+		return fmt.Errorf("process '%s' is already stopped", p.Name)
+	}
+	p.stopped = true
+	p.mu.Unlock()
+
 	log.Printf("stopping process %s (pid %d)", p.Name, p.Cmd.Process.Pid)
 	err := syscall.Kill(-p.Cmd.Process.Pid, syscall.SIGTERM)
 	if err != nil {
@@ -106,8 +131,7 @@ func (p *Process) Stop() error {
 		log.Printf("process %s killed with SIGKILL", p.Name)
 	}
 
-	p.Stdout.Close()
-	p.Stderr.Close()
+	p.closeLogs()
 
 	portStr := strconv.Itoa(p.Port)
 	cmd := exec.Command("tailscale", "serve", "--https", portStr, "off")
@@ -116,4 +140,13 @@ func (p *Process) Stop() error {
 		return err
 	}
 	return nil
+}
+
+func (p *Process) closeLogs() {
+	if p.Stdout != nil {
+		p.Stdout.Close()
+	}
+	if p.Stderr != nil {
+		p.Stderr.Close()
+	}
 }

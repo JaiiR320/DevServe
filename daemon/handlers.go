@@ -44,8 +44,8 @@ func handleServe(args map[string]any) *internal.Response {
 		return internal.ErrResponse(fmt.Errorf("invalid port type"))
 	}
 
-	if err := internal.CheckPortAvailable(port); err != nil {
-		log.Printf("port %d unavailable: %s", port, err)
+	if err := internal.CheckPortInUse(port); err != nil {
+		log.Printf("port %d in use: %s", port, err)
 		return internal.ErrResponse(err)
 	}
 
