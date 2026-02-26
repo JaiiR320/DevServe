@@ -26,7 +26,10 @@ func ErrResponse(err error) *Response {
 }
 
 func SendRequest(conn net.Conn, req *Request) error {
-	return json.NewEncoder(conn).Encode(req)
+	if err := json.NewEncoder(conn).Encode(req); err != nil {
+		return fmt.Errorf("failed to encode request: %w", err)
+	}
+	return nil
 }
 
 func ReadRequest(conn net.Conn) (*Request, error) {
@@ -39,7 +42,10 @@ func ReadRequest(conn net.Conn) (*Request, error) {
 }
 
 func SendResponse(conn net.Conn, resp *Response) error {
-	return json.NewEncoder(conn).Encode(resp)
+	if err := json.NewEncoder(conn).Encode(resp); err != nil {
+		return fmt.Errorf("failed to encode response: %w", err)
+	}
+	return nil
 }
 
 func ReadResponse(conn net.Conn) (*Response, error) {

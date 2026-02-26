@@ -30,16 +30,16 @@ type Process struct {
 func CreateProcess(name string, port int, dir string) (*Process, error) {
 	logDir := filepath.Join(dir, ".devserve")
 	if err := os.MkdirAll(logDir, 0755); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create log directory: %w", err)
 	}
 
 	outFile, err := os.Create(filepath.Join(logDir, "out.log"))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create output log: %w", err)
 	}
 	errFile, err := os.Create(filepath.Join(logDir, "err.log"))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create error log: %w", err)
 	}
 
 	return &Process{
@@ -66,7 +66,7 @@ func (p *Process) Start(command string) error {
 	err := p.Cmd.Start()
 	if err != nil {
 		p.closeLogs()
-		return err
+		return fmt.Errorf("failed to start command: %w", err)
 	}
 
 	p.mu.Lock()
@@ -77,7 +77,7 @@ func (p *Process) Start(command string) error {
 	if err := WaitForPort(p.Port, 15*time.Second); err != nil {
 		syscall.Kill(-p.Cmd.Process.Pid, syscall.SIGTERM)
 		p.closeLogs()
-		return err
+		return fmt.Errorf("failed to wait for port %d: %w", p.Port, err)
 	}
 
 	portStr := strconv.Itoa(p.Port)
@@ -87,9 +87,9 @@ func (p *Process) Start(command string) error {
 		sysErr := syscall.Kill(-p.Cmd.Process.Pid, syscall.SIGTERM)
 		p.closeLogs()
 		if sysErr != nil {
-			return sysErr
+			return fmt.Errorf("failed to kill process after tailscale error: %w", sysErr)
 		}
-		return err
+		return fmt.Errorf("failed to enable tailscale serve: %w", err)
 	}
 	return nil
 }
@@ -110,7 +110,7 @@ func (p *Process) Stop() error {
 	log.Printf("stopping process %s (pid %d)", p.Name, p.Cmd.Process.Pid)
 	err := syscall.Kill(-p.Cmd.Process.Pid, syscall.SIGTERM)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to send SIGTERM to process '%s': %w", p.Name, err)
 	}
 
 	// Wait for the process to exit with a 5s timeout, escalate to SIGKILL if needed
@@ -137,7 +137,7 @@ func (p *Process) Stop() error {
 	cmd := exec.Command("tailscale", "serve", "--https", portStr, "off")
 	err = cmd.Run()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to disable tailscale serve: %w", err)
 	}
 	return nil
 }

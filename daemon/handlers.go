@@ -22,12 +22,12 @@ func handleServe(args map[string]any) *internal.Response {
 	_, exists := processes[name]
 	mu.RUnlock()
 	if exists {
-		return internal.ErrResponse(fmt.Errorf("process name already in use"))
+		return internal.ErrResponse(fmt.Errorf("process '%s' already in use", name))
 	}
 
 	portVal, ok := args["port"]
 	if !ok {
-		return internal.ErrResponse(fmt.Errorf("missing 'port' argument"))
+		return internal.ErrResponse(fmt.Errorf("missing or invalid 'port' argument"))
 	}
 	// JSON numbers decode as float64
 	var port int
@@ -58,20 +58,20 @@ func handleServe(args map[string]any) *internal.Response {
 
 	p, err := internal.CreateProcess(name, port, cwd)
 	if err != nil {
-		log.Printf("failed to create process %s: %s", name, err)
-		return internal.ErrResponse(err)
+		log.Printf("failed to create process '%s': %s", name, err)
+		return internal.ErrResponse(fmt.Errorf("failed to create process '%s': %w", name, err))
 	}
 
 	err = p.Start(command)
 	if err != nil {
-		log.Printf("failed to start %s: %s", name, err)
-		return internal.ErrResponse(err)
+		log.Printf("failed to start process '%s': %s", name, err)
+		return internal.ErrResponse(fmt.Errorf("failed to start process '%s': %w", name, err))
 	}
 
 	mu.Lock()
 	processes[p.Name] = p
 	mu.Unlock()
-	log.Printf("started %s on port %d", name, port)
+	log.Printf("started '%s' on port %d", name, port)
 	return internal.OkResponse(fmt.Sprintf("process '%s' started on port %d", name, port))
 }
 
@@ -90,14 +90,14 @@ func handleStop(args map[string]any) *internal.Response {
 
 	err := p.Stop()
 	if err != nil {
-		log.Printf("failed to stop %s: %s", name, err)
-		return internal.ErrResponse(fmt.Errorf("couldn't stop process: %w", err))
+		log.Printf("failed to stop process '%s': %s", name, err)
+		return internal.ErrResponse(fmt.Errorf("failed to stop process '%s': %w", name, err))
 	}
 
 	mu.Lock()
 	delete(processes, name)
 	mu.Unlock()
-	log.Printf("stopped %s (port %d)", name, p.Port)
+	log.Printf("stopped '%s' (port %d)", name, p.Port)
 	return internal.OkResponse(fmt.Sprintf("process '%s' stopped", name))
 }
 
@@ -116,7 +116,7 @@ func handleList(args map[string]any) *internal.Response {
 
 	data, err := json.Marshal(entries)
 	if err != nil {
-		return internal.ErrResponse(err)
+		return internal.ErrResponse(fmt.Errorf("failed to marshal process list: %w", err))
 	}
 
 	return internal.OkResponse(string(data))

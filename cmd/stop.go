@@ -21,7 +21,7 @@ var stopCmd = &cobra.Command{
 		}
 		resp, err := internal.Send(req)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to send stop request: %w", err)
 		}
 		if !resp.OK {
 			return errors.New(resp.Error)
