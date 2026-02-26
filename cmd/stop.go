@@ -19,14 +19,20 @@ var stopCmd = &cobra.Command{
 				"name": args[0],
 			},
 		}
-		resp, err := internal.Send(req)
+		var (
+			resp *internal.Response
+			err  error
+		)
+		internal.Spin("Stopping process...", func() {
+			resp, err = internal.Send(req)
+		})
 		if err != nil {
 			return fmt.Errorf("failed to send stop request: %w", err)
 		}
 		if !resp.OK {
 			return errors.New(resp.Error)
 		}
-		fmt.Println(resp.Data)
+		fmt.Println(internal.Success(resp.Data))
 		return nil
 	},
 }

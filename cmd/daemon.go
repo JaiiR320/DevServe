@@ -2,6 +2,8 @@ package cmd
 
 import (
 	"devserve/daemon"
+	"devserve/internal"
+	"fmt"
 
 	"github.com/spf13/cobra"
 )
@@ -28,7 +30,18 @@ var daemonCmdStop = &cobra.Command{
 	Args:  cobra.NoArgs,
 	Short: "Stop the daemon",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return daemon.Stop()
+		var (
+			msg string
+			err error
+		)
+		internal.Spin("Stopping daemon...", func() {
+			msg, err = daemon.Stop()
+		})
+		if err != nil {
+			return err
+		}
+		fmt.Println(internal.Success(msg))
+		return nil
 	},
 }
 

@@ -62,23 +62,32 @@ func startInBackground() error {
 		Setpgid: true,
 	}
 
-	err = cmd.Start()
-	if err != nil {
-		return fmt.Errorf("failed to start daemon: %w", err)
+	var startErr error
+	internal.Spin("Starting daemon...", func() {
+		err = cmd.Start()
+		if err != nil {
+			startErr = fmt.Errorf("failed to start daemon: %w", err)
+			return
+		}
+
+		// Wait a moment and verify daemon started with ping
+		time.Sleep(100 * time.Millisecond)
+		pingReq := &internal.Request{Action: "ping"}
+		resp, err := internal.Send(pingReq)
+		if err != nil {
+			startErr = fmt.Errorf("failed to start daemon: %w", err)
+			return
+		}
+		if !resp.OK || resp.Data != "pong" {
+			startErr = errors.New("daemon health check failed")
+			return
+		}
+	})
+	if startErr != nil {
+		return startErr
 	}
 
-	// Wait a moment and verify daemon started with ping
-	time.Sleep(100 * time.Millisecond)
-	pingReq := &internal.Request{Action: "ping"}
-	resp, err := internal.Send(pingReq)
-	if err != nil {
-		return fmt.Errorf("failed to start daemon: %w", err)
-	}
-	if !resp.OK || resp.Data != "pong" {
-		return errors.New("daemon health check failed")
-	}
-
-	fmt.Println("daemon started (logs: /tmp/devserve/out.log)")
+	fmt.Println(internal.Success("daemon started") + " " + internal.Info("logs: /tmp/devserve/out.log"))
 	return nil
 }
 
@@ -136,16 +145,16 @@ func startForeground() error {
 	return nil
 }
 
-func Stop() error {
+func Stop() (string, error) {
 	req := &internal.Request{Action: "shutdown"}
 	resp, err := internal.Send(req)
 	if err != nil {
-		return fmt.Errorf("failed to send shutdown request: %w", err)
+		return "", fmt.Errorf("failed to send shutdown request: %w", err)
 	}
 	if !resp.OK {
-		return fmt.Errorf("failed to shutdown daemon: %s", resp.Error)
+		return "", fmt.Errorf("failed to shutdown daemon: %s", resp.Error)
 	}
-	return nil
+	return resp.Data, nil
 }
 
 // stopAllProcesses stops all running child processes concurrently.

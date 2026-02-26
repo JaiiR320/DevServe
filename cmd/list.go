@@ -23,7 +23,7 @@ var listCmd = &cobra.Command{
 		if !resp.OK {
 			return errors.New(resp.Error)
 		}
-		fmt.Println(resp.Data)
+		fmt.Println(internal.RenderTable(resp.Data))
 		return nil
 	},
 }
