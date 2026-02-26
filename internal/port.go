@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func CheckPortAvailable(port int) error {
+func CheckPortInUse(port int) error {
 	addr := "localhost:" + strconv.Itoa(port)
 	conn, err := net.DialTimeout("tcp", addr, 500*time.Millisecond)
 	if err == nil {
