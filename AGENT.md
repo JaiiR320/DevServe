@@ -33,3 +33,8 @@ None. Unix socket file permissions only.
 - `daemon/daemon.go` — daemon loop + shutdown
 - `daemon/handlers.go` — action handlers
 - `cmd/` — CLI commands (serve, stop, list, daemon)
+
+## Learnings
+
+### Error handling conventions
+Wrap errors with `fmt.Errorf("failed to <verb> <noun>: %w", err)`. Always single-quote user-provided names in errors (e.g. `"process '%s' not found"`). Use `"failed to <verb>"` prefix for error log messages. Keep log-then-return pattern in handlers. Validation errors use `"missing or invalid '<field>'"` consistently.

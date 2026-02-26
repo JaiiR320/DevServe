@@ -72,7 +72,7 @@ func startInBackground() error {
 	pingReq := &internal.Request{Action: "ping"}
 	resp, err := internal.Send(pingReq)
 	if err != nil {
-		return fmt.Errorf("daemon failed to start: %w", err)
+		return fmt.Errorf("failed to start daemon: %w", err)
 	}
 	if !resp.OK || resp.Data != "pong" {
 		return errors.New("daemon health check failed")
@@ -88,13 +88,13 @@ func startForeground() error {
 	conn, err := net.Dial("unix", internal.Socket)
 	if err == nil {
 		conn.Close()
-		return errors.New("another daemon is already running")
+		return errors.New("daemon is already running")
 	}
 	os.Remove(internal.Socket)
 
 	listener, err := net.Listen("unix", internal.Socket)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to listen on socket: %w", err)
 	}
 	defer listener.Close()
 	log.Println("daemon started")
@@ -140,10 +140,10 @@ func Stop() error {
 	req := &internal.Request{Action: "shutdown"}
 	resp, err := internal.Send(req)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to send shutdown request: %w", err)
 	}
 	if !resp.OK {
-		return fmt.Errorf("daemon shutdown failed: %s", resp.Error)
+		return fmt.Errorf("failed to shutdown daemon: %s", resp.Error)
 	}
 	return nil
 }
@@ -212,7 +212,7 @@ func handleConn(conn net.Conn, stop chan struct{}) {
 
 	req, err := internal.ReadRequest(conn)
 	if err != nil {
-		log.Println("error reading request:", err)
+		log.Printf("failed to read request: %s", err)
 		internal.SendResponse(conn, internal.ErrResponse(err))
 		return
 	}
@@ -241,7 +241,7 @@ func handleConn(conn net.Conn, stop chan struct{}) {
 	case "list":
 		resp = handleList(req.Args)
 	default:
-		resp = internal.ErrResponse(fmt.Errorf("unknown action: %s", req.Action))
+		resp = internal.ErrResponse(fmt.Errorf("unknown action '%s'", req.Action))
 	}
 
 	internal.SendResponse(conn, resp)
