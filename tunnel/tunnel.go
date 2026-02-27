@@ -1,4 +1,4 @@
-package internal
+package tunnel
 
 import (
 	"os/exec"

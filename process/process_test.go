@@ -1,6 +1,8 @@
-package internal
+package process_test
 
 import (
+	"devserve/process"
+	"devserve/tunnel"
 	"devserve/util"
 	"fmt"
 	"os"
@@ -32,9 +34,9 @@ func (f *failOnceStopTunnel) Stop(port int) error {
 
 func swapTunnel(t *testing.T) {
 	t.Helper()
-	original := DefaultTunnel
-	DefaultTunnel = noopTunnel{}
-	t.Cleanup(func() { DefaultTunnel = original })
+	original := tunnel.DefaultTunnel
+	tunnel.DefaultTunnel = noopTunnel{}
+	t.Cleanup(func() { tunnel.DefaultTunnel = original })
 }
 
 func requireNC(t *testing.T) {
@@ -47,7 +49,7 @@ func requireNC(t *testing.T) {
 // Task 5.3: Test CreateProcess — assert .devserve/ directory and log files created
 func TestCreateProcess(t *testing.T) {
 	dir := t.TempDir()
-	p, err := CreateProcess("testapp", 3000, dir)
+	p, err := process.CreateProcess("testapp", 3000, dir)
 	if err != nil {
 		t.Fatalf("CreateProcess failed: %v", err)
 	}
@@ -73,7 +75,7 @@ func TestCreateProcess(t *testing.T) {
 
 // Task 5.4: Test CreateProcess with invalid directory
 func TestCreateProcessInvalidDir(t *testing.T) {
-	_, err := CreateProcess("testapp", 3000, "/dev/null/bad")
+	_, err := process.CreateProcess("testapp", 3000, "/dev/null/bad")
 	if err == nil {
 		t.Fatal("expected error for invalid directory, got nil")
 	}
@@ -89,7 +91,7 @@ func TestProcessStart(t *testing.T) {
 
 	port := freePort(t)
 	dir := t.TempDir()
-	p, err := CreateProcess("testapp", port, dir)
+	p, err := process.CreateProcess("testapp", port, dir)
 	if err != nil {
 		t.Fatalf("CreateProcess failed: %v", err)
 	}
@@ -115,7 +117,7 @@ func TestProcessStopAfterStart(t *testing.T) {
 
 	port := freePort(t)
 	dir := t.TempDir()
-	p, err := CreateProcess("testapp", port, dir)
+	p, err := process.CreateProcess("testapp", port, dir)
 	if err != nil {
 		t.Fatalf("CreateProcess failed: %v", err)
 	}
@@ -146,7 +148,7 @@ func TestProcessStopIdempotent(t *testing.T) {
 
 	port := freePort(t)
 	dir := t.TempDir()
-	p, err := CreateProcess("testapp", port, dir)
+	p, err := process.CreateProcess("testapp", port, dir)
 	if err != nil {
 		t.Fatalf("CreateProcess failed: %v", err)
 	}
@@ -172,7 +174,7 @@ func TestProcessStopIdempotent(t *testing.T) {
 // Task 5.8: Test Stop before Start — assert "has not been started"
 func TestProcessStopBeforeStart(t *testing.T) {
 	dir := t.TempDir()
-	p, err := CreateProcess("testapp", 3000, dir)
+	p, err := process.CreateProcess("testapp", 3000, dir)
 	if err != nil {
 		t.Fatalf("CreateProcess failed: %v", err)
 	}
@@ -193,14 +195,14 @@ func TestProcessStopBeforeStart(t *testing.T) {
 func TestProcessStopCanRetryAfterTailscaleFailure(t *testing.T) {
 	requireNC(t)
 
-	tunnel := &failOnceStopTunnel{}
-	original := DefaultTunnel
-	DefaultTunnel = tunnel
-	t.Cleanup(func() { DefaultTunnel = original })
+	mock_tunnel := &failOnceStopTunnel{}
+	original := tunnel.DefaultTunnel
+	tunnel.DefaultTunnel = mock_tunnel
+	t.Cleanup(func() { tunnel.DefaultTunnel = original })
 
 	port := freePort(t)
 	dir := t.TempDir()
-	p, err := CreateProcess("testapp", port, dir)
+	p, err := process.CreateProcess("testapp", port, dir)
 	if err != nil {
 		t.Fatalf("CreateProcess failed: %v", err)
 	}
@@ -225,7 +227,7 @@ func TestProcessStopCanRetryAfterTailscaleFailure(t *testing.T) {
 		t.Fatalf("expected second Stop to succeed after tailscale retry, got %v", err)
 	}
 
-	if tunnel.stopCalls != 2 {
-		t.Errorf("expected tunnel Stop to be called 2 times, got %d", tunnel.stopCalls)
+	if mock_tunnel.stopCalls != 2 {
+		t.Errorf("expected tunnel Stop to be called 2 times, got %d", mock_tunnel.stopCalls)
 	}
 }

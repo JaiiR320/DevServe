@@ -1,6 +1,7 @@
-package internal
+package process_test
 
 import (
+	"devserve/process"
 	"fmt"
 	"net"
 	"strings"
@@ -24,7 +25,7 @@ func freePort(t *testing.T) int {
 func TestCheckPortInUseFree(t *testing.T) {
 	port := freePort(t)
 
-	err := CheckPortInUse(port)
+	err := process.CheckPortInUse(port)
 	if err != nil {
 		t.Errorf("expected no error for free port %d, got %v", port, err)
 	}
@@ -39,7 +40,7 @@ func TestCheckPortInUseOccupied(t *testing.T) {
 	defer l.Close()
 
 	port := l.Addr().(*net.TCPAddr).Port
-	err = CheckPortInUse(port)
+	err = process.CheckPortInUse(port)
 	if err == nil {
 		t.Fatalf("expected error for occupied port %d, got nil", port)
 	}
@@ -58,7 +59,7 @@ func TestWaitForPortImmediate(t *testing.T) {
 
 	port := l.Addr().(*net.TCPAddr).Port
 	start := time.Now()
-	err = WaitForPort(port, 2*time.Second)
+	err = process.WaitForPort(port, 2*time.Second)
 	elapsed := time.Since(start)
 
 	if err != nil {
@@ -89,7 +90,7 @@ func TestWaitForPortDelayed(t *testing.T) {
 		}
 	}()
 
-	err := WaitForPort(port, 3*time.Second)
+	err := process.WaitForPort(port, 3*time.Second)
 	if err != nil {
 		t.Fatalf("expected port to become available, got %v", err)
 	}
@@ -100,7 +101,7 @@ func TestWaitForPortTimeout(t *testing.T) {
 	port := freePort(t)
 
 	start := time.Now()
-	err := WaitForPort(port, 300*time.Millisecond)
+	err := process.WaitForPort(port, 300*time.Millisecond)
 	elapsed := time.Since(start)
 
 	if err == nil {

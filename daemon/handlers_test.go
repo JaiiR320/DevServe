@@ -1,7 +1,7 @@
 package daemon
 
 import (
-	"devserve/internal"
+	"devserve/process"
 	"devserve/util"
 	"encoding/json"
 	"fmt"
@@ -98,7 +98,7 @@ func TestHandleServeMissingCommand(t *testing.T) {
 func TestHandleServeDuplicateName(t *testing.T) {
 	resetState(t)
 
-	SetProcess("myapp", &internal.Process{Name: "myapp", Port: 3000})
+	SetProcess("myapp", &process.Process{Name: "myapp", Port: 3000})
 
 	resp := handleServe(map[string]any{
 		"name":    "myapp",
@@ -239,8 +239,8 @@ func TestHandleListPopulated(t *testing.T) {
 	}
 	t.Cleanup(func() { tsRunner = origRunner })
 
-	SetProcess("web", &internal.Process{Name: "web", Port: 3000})
-	SetProcess("api", &internal.Process{Name: "api", Port: 4000})
+	SetProcess("web", &process.Process{Name: "web", Port: 3000})
+	SetProcess("api", &process.Process{Name: "api", Port: 4000})
 
 	resp := handleList(nil)
 
@@ -340,7 +340,7 @@ func TestHandleLogsValid(t *testing.T) {
 		t.Fatalf("failed to write stderr log: %v", err)
 	}
 
-	SetProcess("myapp", &internal.Process{Name: "myapp", Port: 3000, Dir: dir})
+	SetProcess("myapp", &process.Process{Name: "myapp", Port: 3000, Dir: dir})
 
 	resp := handleLogs(map[string]any{"name": "myapp"})
 

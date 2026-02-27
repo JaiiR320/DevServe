@@ -1,6 +1,7 @@
-package internal
+package process
 
 import (
+	"devserve/tunnel"
 	"devserve/util"
 	"fmt"
 	"log"
@@ -79,7 +80,7 @@ func (p *Process) Start(command string) error {
 		return fmt.Errorf("failed to wait for port %d: %w", p.Port, err)
 	}
 
-	if err := DefaultTunnel.Serve(p.Port); err != nil {
+	if err := tunnel.DefaultTunnel.Serve(p.Port); err != nil {
 		sysErr := syscall.Kill(-p.Cmd.Process.Pid, syscall.SIGTERM)
 		p.closeLogs()
 		if sysErr != nil {
@@ -135,7 +136,7 @@ func (p *Process) Stop() error {
 		p.mu.Unlock()
 	}
 
-	if err := DefaultTunnel.Stop(p.Port); err != nil {
+	if err := tunnel.DefaultTunnel.Stop(p.Port); err != nil {
 		return fmt.Errorf("failed to disable tailscale serve: %w", err)
 	}
 

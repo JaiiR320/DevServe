@@ -2,7 +2,8 @@ package daemon_test
 
 import (
 	"devserve/daemon"
-	"devserve/internal"
+	"devserve/process"
+	"devserve/tunnel"
 	"fmt"
 	"net"
 	"os/exec"
@@ -179,16 +180,16 @@ func TestStopAllProcessesRetriesTailscaleFailure(t *testing.T) {
 	daemon.ResetProcesses()
 	t.Cleanup(func() { daemon.ResetProcesses() })
 
-	tunnel := &failOnceStopTunnel{failed: make(map[int]bool)}
-	original := internal.DefaultTunnel
-	internal.DefaultTunnel = tunnel
-	t.Cleanup(func() { internal.DefaultTunnel = original })
+	mock_tunnel := &failOnceStopTunnel{failed: make(map[int]bool)}
+	original := tunnel.DefaultTunnel
+	tunnel.DefaultTunnel = mock_tunnel
+	t.Cleanup(func() { tunnel.DefaultTunnel = original })
 
 	// Start two real processes (simulating "core" on 5173 and "ui" on 5174)
 	port1 := freePort(t)
 	port2 := freePort(t)
 
-	p1, err := internal.CreateProcess("core", port1, t.TempDir())
+	p1, err := process.CreateProcess("core", port1, t.TempDir())
 	if err != nil {
 		t.Fatalf("CreateProcess core failed: %v", err)
 	}
@@ -196,7 +197,7 @@ func TestStopAllProcessesRetriesTailscaleFailure(t *testing.T) {
 		t.Fatalf("Start core failed: %v", err)
 	}
 
-	p2, err := internal.CreateProcess("ui", port2, t.TempDir())
+	p2, err := process.CreateProcess("ui", port2, t.TempDir())
 	if err != nil {
 		t.Fatalf("CreateProcess ui failed: %v", err)
 	}

@@ -2,7 +2,8 @@ package daemon
 
 import (
 	"devserve/cli"
-	"devserve/internal"
+	"devserve/process"
+	"devserve/tunnel"
 	"devserve/util"
 	"encoding/json"
 	"fmt"
@@ -48,7 +49,7 @@ func handleServe(args map[string]any) *Response {
 		return ErrResponse(fmt.Errorf("invalid port type"))
 	}
 
-	if err := internal.CheckPortInUse(port); err != nil {
+	if err := process.CheckPortInUse(port); err != nil {
 		log.Printf("port %d in use: %s", port, err)
 		return ErrResponse(err)
 	}
@@ -60,7 +61,7 @@ func handleServe(args map[string]any) *Response {
 
 	cwd, _ := args["cwd"].(string) // optional, empty string if not provided
 
-	p, err := internal.CreateProcess(name, port, cwd)
+	p, err := process.CreateProcess(name, port, cwd)
 	if err != nil {
 		log.Printf("failed to create process '%s': %s", name, err)
 		return ErrResponse(fmt.Errorf("failed to create process '%s': %w", name, err))
@@ -107,7 +108,7 @@ func handleStop(args map[string]any) *Response {
 
 // tsRunner is the function used to fetch tailscale status JSON.
 // It can be overridden in tests.
-var tsRunner internal.CommandRunner = internal.DefaultTailscaleRunner
+var tsRunner tunnel.CommandRunner = tunnel.DefaultTailscaleRunner
 
 type listEntry struct {
 	Name string `json:"name"`
@@ -121,7 +122,7 @@ type listResponse struct {
 }
 
 func handleList(args map[string]any) *Response {
-	info, err := internal.GetTailscaleInfo(tsRunner)
+	info, err := tunnel.GetTailscaleInfo(tsRunner)
 	if err != nil {
 		return ErrResponse(err)
 	}
@@ -150,25 +151,25 @@ func handleList(args map[string]any) *Response {
 // ResetProcesses clears the processes map for test isolation.
 func ResetProcesses() {
 	mu.Lock()
-	processes = make(map[string]*internal.Process)
+	processes = make(map[string]*process.Process)
 	mu.Unlock()
 }
 
 // SetProcess adds a process to the map (for test setup).
-func SetProcess(name string, p *internal.Process) {
+func SetProcess(name string, p *process.Process) {
 	mu.Lock()
 	if processes == nil {
-		processes = make(map[string]*internal.Process)
+		processes = make(map[string]*process.Process)
 	}
 	processes[name] = p
 	mu.Unlock()
 }
 
 // GetProcesses returns a copy of the processes map (for test assertions).
-func GetProcesses() map[string]*internal.Process {
+func GetProcesses() map[string]*process.Process {
 	mu.RLock()
 	defer mu.RUnlock()
-	cp := make(map[string]*internal.Process, len(processes))
+	cp := make(map[string]*process.Process, len(processes))
 	for k, v := range processes {
 		cp[k] = v
 	}

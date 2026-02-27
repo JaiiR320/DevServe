@@ -2,7 +2,7 @@ package daemon
 
 import (
 	"devserve/cli"
-	"devserve/internal"
+	"devserve/process"
 	"devserve/util"
 	"errors"
 	"fmt"
@@ -19,7 +19,7 @@ import (
 )
 
 var (
-	processes map[string]*internal.Process
+	processes map[string]*process.Process
 	mu        sync.RWMutex
 )
 
@@ -96,7 +96,7 @@ func startInBackground() error {
 
 func startForeground() error {
 	cli.InitLogger()
-	processes = make(map[string]*internal.Process)
+	processes = make(map[string]*process.Process)
 	conn, err := net.Dial("unix", util.Socket)
 	if err == nil {
 		conn.Close()
@@ -172,7 +172,7 @@ func StopAllProcesses(timeout time.Duration) []string {
 // that ultimately failed to stop.
 func stopAllProcesses(timeout time.Duration) []string {
 	mu.Lock()
-	snapshot := make(map[string]*internal.Process, len(processes))
+	snapshot := make(map[string]*process.Process, len(processes))
 	for k, v := range processes {
 		snapshot[k] = v
 	}
@@ -193,7 +193,7 @@ func stopAllProcesses(timeout time.Duration) []string {
 
 	results := make(chan result, len(snapshot)*maxRetries)
 	for name, p := range snapshot {
-		go func(name string, p *internal.Process) {
+		go func(name string, p *process.Process) {
 			err := p.Stop()
 			results <- result{name: name, port: p.Port, err: err, attempt: 1}
 		}(name, p)
@@ -211,7 +211,7 @@ func stopAllProcesses(timeout time.Duration) []string {
 				if r.attempt < maxRetries {
 					// Retry in a goroutine
 					p := snapshot[r.name]
-					go func(name string, p *internal.Process, attempt int) {
+					go func(name string, p *process.Process, attempt int) {
 						time.Sleep(time.Duration(attempt) * 500 * time.Millisecond)
 						err := p.Stop()
 						results <- result{name: name, port: p.Port, err: err, attempt: attempt + 1}

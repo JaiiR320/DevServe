@@ -1,6 +1,7 @@
-package internal
+package tunnel_test
 
 import (
+	"devserve/tunnel"
 	"fmt"
 	"testing"
 )
@@ -13,7 +14,7 @@ func TestGetTailscaleInfo(t *testing.T) {
 		}
 	}`
 
-	info, err := GetTailscaleInfo(func() ([]byte, error) {
+	info, err := tunnel.GetTailscaleInfo(func() ([]byte, error) {
 		return []byte(fakeJSON), nil
 	})
 	if err != nil {
@@ -29,7 +30,7 @@ func TestGetTailscaleInfo(t *testing.T) {
 }
 
 func TestGetTailscaleInfoError(t *testing.T) {
-	_, err := GetTailscaleInfo(func() ([]byte, error) {
+	_, err := tunnel.GetTailscaleInfo(func() ([]byte, error) {
 		return nil, fmt.Errorf("tailscale not running")
 	})
 	if err == nil {
