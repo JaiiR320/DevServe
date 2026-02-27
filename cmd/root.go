@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"devserve/internal"
+	"devserve/cli"
 	"fmt"
 	"os"
 
@@ -27,11 +27,11 @@ var rootCmd = &cobra.Command{
 func Execute() {
 	rootCmd.SilenceErrors = true
 	rootCmd.SilenceUsage = true
-	rootCmd.SetHelpTemplate(internal.HelpTemplate())
+	rootCmd.SetHelpTemplate(cli.HelpTemplate())
 
 	err := rootCmd.Execute()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, internal.Error(err.Error()))
+		fmt.Fprintln(os.Stderr, cli.Error(err.Error()))
 		os.Exit(1)
 	}
 }

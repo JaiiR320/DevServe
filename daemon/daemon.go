@@ -1,6 +1,7 @@
 package daemon
 
 import (
+	"devserve/cli"
 	"devserve/internal"
 	"devserve/util"
 	"errors"
@@ -65,7 +66,7 @@ func startInBackground() error {
 	}
 
 	var startErr error
-	internal.Spin("Starting daemon...", func() {
+	cli.Spin("Starting daemon...", func() {
 		err = cmd.Start()
 		if err != nil {
 			startErr = fmt.Errorf("failed to start daemon: %w", err)
@@ -89,12 +90,12 @@ func startInBackground() error {
 		return startErr
 	}
 
-	fmt.Println(internal.Success("daemon started") + " " + internal.Info("logs: "+filepath.Join(util.DaemonDir, util.DaemonLogFile)))
+	fmt.Println(cli.Success("daemon started") + " " + cli.Info("logs: "+filepath.Join(util.DaemonDir, util.DaemonLogFile)))
 	return nil
 }
 
 func startForeground() error {
-	internal.InitLogger()
+	cli.InitLogger()
 	processes = make(map[string]*internal.Process)
 	conn, err := net.Dial("unix", util.Socket)
 	if err == nil {

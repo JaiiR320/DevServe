@@ -1,8 +1,8 @@
 package cmd
 
 import (
+	"devserve/cli"
 	"devserve/daemon"
-	"devserve/internal"
 	"devserve/util"
 	"fmt"
 	"path/filepath"
@@ -37,13 +37,13 @@ var daemonCmdStop = &cobra.Command{
 			msg string
 			err error
 		)
-		internal.Spin("Stopping daemon...", func() {
+		cli.Spin("Stopping daemon...", func() {
 			msg, err = daemon.Stop()
 		})
 		if err != nil {
 			return err
 		}
-		fmt.Println(internal.Success(msg))
+		fmt.Println(cli.Success(msg))
 		return nil
 	},
 }
@@ -62,12 +62,12 @@ var daemonCmdLogs = &cobra.Command{
 		}
 
 		if len(logLines) == 0 {
-			fmt.Println(internal.Info("no daemon logs found"))
+			fmt.Println(cli.Info("no daemon logs found"))
 			return nil
 		}
 
 		var b strings.Builder
-		b.WriteString(internal.Cyan.Render("─── daemon ───"))
+		b.WriteString(cli.Cyan.Render("─── daemon ───"))
 		b.WriteString("\n")
 		for _, line := range logLines {
 			b.WriteString(line)

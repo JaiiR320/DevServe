@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"devserve/cli"
 	"devserve/internal"
 	"errors"
 	"fmt"
@@ -33,7 +34,7 @@ func runServe(args []string) error {
 		},
 	}
 	var resp *internal.Response
-	internal.Spin("Starting process...", func() {
+	cli.Spin("Starting process...", func() {
 		resp, err = sendRequest(req)
 	})
 	if err != nil {
@@ -42,7 +43,7 @@ func runServe(args []string) error {
 	if !resp.OK {
 		return errors.New(resp.Error)
 	}
-	fmt.Println(internal.Success(resp.Data))
+	fmt.Println(cli.Success(resp.Data))
 	return nil
 }
 

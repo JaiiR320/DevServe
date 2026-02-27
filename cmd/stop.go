@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"devserve/cli"
 	"devserve/internal"
 	"errors"
 	"fmt"
@@ -23,7 +24,7 @@ var stopCmd = &cobra.Command{
 			resp *internal.Response
 			err  error
 		)
-		internal.Spin("Stopping process...", func() {
+		cli.Spin("Stopping process...", func() {
 			resp, err = internal.Send(req)
 		})
 		if err != nil {
@@ -32,7 +33,7 @@ var stopCmd = &cobra.Command{
 		if !resp.OK {
 			return errors.New(resp.Error)
 		}
-		fmt.Println(internal.Success(resp.Data))
+		fmt.Println(cli.Success(resp.Data))
 		return nil
 	},
 }

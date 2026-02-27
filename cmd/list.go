@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"devserve/cli"
 	"devserve/internal"
 	"errors"
 	"fmt"
@@ -23,7 +24,7 @@ var listCmd = &cobra.Command{
 		if !resp.OK {
 			return errors.New(resp.Error)
 		}
-		fmt.Println(internal.RenderTable(resp.Data))
+		fmt.Println(cli.RenderTable(resp.Data))
 		return nil
 	},
 }

@@ -1,6 +1,7 @@
 package daemon
 
 import (
+	"devserve/cli"
 	"devserve/internal"
 	"devserve/util"
 	"encoding/json"
@@ -209,8 +210,8 @@ func handleLogs(args map[string]any) *internal.Response {
 		return internal.ErrResponse(fmt.Errorf("failed to read stderr log: %w", err))
 	}
 
-	headerStyle := internal.Cyan
-	stderrStyle := internal.Red
+	headerStyle := cli.Cyan
+	stderrStyle := cli.Red
 
 	var b strings.Builder
 	b.WriteString(headerStyle.Render("─── stdout ───"))
