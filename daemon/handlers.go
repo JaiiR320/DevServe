@@ -103,20 +103,41 @@ func handleStop(args map[string]any) *internal.Response {
 	return internal.OkResponse(fmt.Sprintf("process '%s' stopped", name))
 }
 
+// tsRunner is the function used to fetch tailscale status JSON.
+// It can be overridden in tests.
+var tsRunner internal.CommandRunner = internal.DefaultTailscaleRunner
+
+type listEntry struct {
+	Name string `json:"name"`
+	Port int    `json:"port"`
+}
+
+type listResponse struct {
+	Processes []listEntry `json:"processes"`
+	Hostname  string      `json:"hostname"`
+	IP        string      `json:"ip"`
+}
+
 func handleList(args map[string]any) *internal.Response {
-	type entry struct {
-		Name string `json:"name"`
-		Port int    `json:"port"`
+	info, err := internal.GetTailscaleInfo(tsRunner)
+	if err != nil {
+		return internal.ErrResponse(err)
 	}
 
 	mu.RLock()
-	entries := make([]entry, 0, len(processes))
+	entries := make([]listEntry, 0, len(processes))
 	for _, v := range processes {
-		entries = append(entries, entry{Name: v.Name, Port: v.Port})
+		entries = append(entries, listEntry{Name: v.Name, Port: v.Port})
 	}
 	mu.RUnlock()
 
-	data, err := json.Marshal(entries)
+	lr := listResponse{
+		Processes: entries,
+		Hostname:  info.Hostname,
+		IP:        info.IP,
+	}
+
+	data, err := json.Marshal(lr)
 	if err != nil {
 		return internal.ErrResponse(fmt.Errorf("failed to marshal process list: %w", err))
 	}

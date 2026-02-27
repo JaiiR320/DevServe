@@ -3,6 +3,7 @@ package daemon
 import (
 	"devserve/internal"
 	"encoding/json"
+	"fmt"
 	"net"
 	"os"
 	"path/filepath"
@@ -200,19 +201,42 @@ func TestHandleStopNotFound(t *testing.T) {
 func TestHandleListEmpty(t *testing.T) {
 	resetState(t)
 
+	origRunner := tsRunner
+	tsRunner = func() ([]byte, error) {
+		return []byte(`{"TailscaleIPs":["100.1.2.3"],"Self":{"DNSName":"host.example.ts.net."}}`), nil
+	}
+	t.Cleanup(func() { tsRunner = origRunner })
+
 	resp := handleList(nil)
 
 	if !resp.OK {
 		t.Fatalf("expected OK response, got error: %s", resp.Error)
 	}
-	if resp.Data != "[]" {
-		t.Errorf("expected data %q, got %q", "[]", resp.Data)
+
+	var lr listResponse
+	if err := json.Unmarshal([]byte(resp.Data), &lr); err != nil {
+		t.Fatalf("failed to parse response: %v", err)
+	}
+	if len(lr.Processes) != 0 {
+		t.Errorf("expected 0 processes, got %d", len(lr.Processes))
+	}
+	if lr.Hostname != "host.example.ts.net" {
+		t.Errorf("expected hostname %q, got %q", "host.example.ts.net", lr.Hostname)
+	}
+	if lr.IP != "100.1.2.3" {
+		t.Errorf("expected IP %q, got %q", "100.1.2.3", lr.IP)
 	}
 }
 
 // Task 6.12: Test handleList with populated map
 func TestHandleListPopulated(t *testing.T) {
 	resetState(t)
+
+	origRunner := tsRunner
+	tsRunner = func() ([]byte, error) {
+		return []byte(`{"TailscaleIPs":["100.1.2.3"],"Self":{"DNSName":"host.example.ts.net."}}`), nil
+	}
+	t.Cleanup(func() { tsRunner = origRunner })
 
 	SetProcess("web", &internal.Process{Name: "web", Port: 3000})
 	SetProcess("api", &internal.Process{Name: "api", Port: 4000})
@@ -223,20 +247,17 @@ func TestHandleListPopulated(t *testing.T) {
 		t.Fatalf("expected OK response, got error: %s", resp.Error)
 	}
 
-	var entries []struct {
-		Name string `json:"name"`
-		Port int    `json:"port"`
-	}
-	if err := json.Unmarshal([]byte(resp.Data), &entries); err != nil {
+	var lr listResponse
+	if err := json.Unmarshal([]byte(resp.Data), &lr); err != nil {
 		t.Fatalf("failed to parse response data as JSON: %v", err)
 	}
 
-	if len(entries) != 2 {
-		t.Fatalf("expected 2 entries, got %d", len(entries))
+	if len(lr.Processes) != 2 {
+		t.Fatalf("expected 2 entries, got %d", len(lr.Processes))
 	}
 
 	found := map[string]int{}
-	for _, e := range entries {
+	for _, e := range lr.Processes {
 		found[e.Name] = e.Port
 	}
 	if found["web"] != 3000 {
@@ -244,6 +265,29 @@ func TestHandleListPopulated(t *testing.T) {
 	}
 	if found["api"] != 4000 {
 		t.Errorf("expected api on port 4000, got %d", found["api"])
+	}
+	if lr.Hostname != "host.example.ts.net" {
+		t.Errorf("expected hostname %q, got %q", "host.example.ts.net", lr.Hostname)
+	}
+}
+
+// Test handleList when tailscale is unavailable — returns error response
+func TestHandleListTailscaleUnavailable(t *testing.T) {
+	resetState(t)
+
+	origRunner := tsRunner
+	tsRunner = func() ([]byte, error) {
+		return nil, fmt.Errorf("tailscale not running")
+	}
+	t.Cleanup(func() { tsRunner = origRunner })
+
+	resp := handleList(nil)
+
+	if resp.OK {
+		t.Fatal("expected error response when tailscale unavailable, got OK")
+	}
+	if !strings.Contains(resp.Error, "tailscale") {
+		t.Errorf("expected error to mention tailscale, got %q", resp.Error)
 	}
 }
 

@@ -39,19 +39,25 @@ func RenderTable(data string) string {
 		Port int    `json:"port"`
 	}
 
-	var entries []entry
-	if err := json.Unmarshal([]byte(data), &entries); err != nil {
+	type listResp struct {
+		Processes []entry `json:"processes"`
+		Hostname  string  `json:"hostname"`
+		IP        string  `json:"ip"`
+	}
+
+	var lr listResp
+	if err := json.Unmarshal([]byte(data), &lr); err != nil {
 		return data // fallback to raw output
 	}
 
-	if len(entries) == 0 {
+	if len(lr.Processes) == 0 {
 		return Dim.Render("No active processes")
 	}
 
 	// Calculate column widths
 	nameWidth := 4 // "NAME"
 	portWidth := 4 // "PORT"
-	for _, e := range entries {
+	for _, e := range lr.Processes {
 		if len(e.Name) > nameWidth {
 			nameWidth = len(e.Name)
 		}
@@ -63,14 +69,38 @@ func RenderTable(data string) string {
 
 	// Build table
 	var b strings.Builder
-	header := fmt.Sprintf("%-*s  %-*s", nameWidth, "NAME", portWidth, "PORT")
+	header := fmt.Sprintf("%-*s  %-*s  %-5s  %-5s  %-3s",
+		nameWidth, "NAME", portWidth, "PORT", "LOCAL", "IP", "DNS")
 	b.WriteString(Bold.Render(header))
-	for _, e := range entries {
+	for _, e := range lr.Processes {
+		localURL := fmt.Sprintf("http://localhost:%d", e.Port)
+		ipURL := fmt.Sprintf("http://%s:%d", lr.IP, e.Port)
+		dnsURL := fmt.Sprintf("https://%s:%d", lr.Hostname, e.Port)
+
+		localLink := Hyperlink(localURL, "local")
+		ipLink := Hyperlink(ipURL, "ip")
+		dnsLink := Hyperlink(dnsURL, "dns")
+
+		// OSC 8 escape sequences are zero-width in terminals but count in
+		// Go's %-*s padding. Compensate by adding the invisible byte overhead.
+		localPad := 5 + len(localLink) - len("local")
+		ipPad := 5 + len(ipLink) - len("ip")
+
 		b.WriteString("\n")
-		b.WriteString(fmt.Sprintf("%-*s  %-*d", nameWidth, e.Name, portWidth, e.Port))
+		b.WriteString(fmt.Sprintf("%-*s  %-*d  %-*s  %-*s  %s",
+			nameWidth, e.Name, portWidth, e.Port,
+			localPad, localLink,
+			ipPad, ipLink,
+			dnsLink))
 	}
 
 	return b.String()
+}
+
+// Hyperlink returns an OSC 8 hyperlink that renders as a clickable label in
+// supported terminals.
+func Hyperlink(url, label string) string {
+	return fmt.Sprintf("\x1b]8;;%s\x1b\\%s\x1b]8;;\x1b\\", url, label)
 }
 
 // Spin runs fn while displaying a spinner with the given title.
