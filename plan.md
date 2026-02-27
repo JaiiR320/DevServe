@@ -93,14 +93,14 @@ Formatting functions are pure (string in, string out). Tests validate structure 
 
 ### Tasks
 
-- [ ] **4.1** Test `Success` — assert output contains `"✓"` and the message string
-- [ ] **4.2** Test `Error` — assert output contains `"✗"` and the message string
-- [ ] **4.3** Test `Info` — assert output contains `"•"` and the message string
-- [ ] **4.4** Test `RenderTable` with valid JSON array — `[{"name":"app","port":3000}]`, assert output contains `"NAME"`, `"PORT"`, `"app"`, `"3000"`
-- [ ] **4.5** Test `RenderTable` with multiple entries — assert all entries appear in output
-- [ ] **4.6** Test `RenderTable` with empty array `[]` — assert output contains `"No active processes"`
-- [ ] **4.7** Test `RenderTable` with invalid JSON — assert raw input is returned as fallback
-- [ ] **4.8** Test `HelpTemplate` — assert returns non-empty string containing `"Usage:"` and `"Commands:"`
+- [x] **4.1** Test `Success` — assert output contains `"✓"` and the message string
+- [x] **4.2** Test `Error` — assert output contains `"✗"` and the message string
+- [x] **4.3** Test `Info` — assert output contains `"•"` and the message string
+- [x] **4.4** Test `RenderTable` with valid JSON array — `[{"name":"app","port":3000}]`, assert output contains `"NAME"`, `"PORT"`, `"app"`, `"3000"`
+- [x] **4.5** Test `RenderTable` with multiple entries — assert all entries appear in output
+- [x] **4.6** Test `RenderTable` with empty array `[]` — assert output contains `"No active processes"`
+- [x] **4.7** Test `RenderTable` with invalid JSON — assert raw input is returned as fallback
+- [x] **4.8** Test `HelpTemplate` — assert returns non-empty string containing `"Usage:"` and `"Commands:"`
 
 ---
 
