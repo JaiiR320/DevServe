@@ -7,7 +7,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -28,16 +27,16 @@ type Process struct {
 
 // initialize out files, and process struct
 func CreateProcess(name string, port int, dir string) (*Process, error) {
-	logDir := filepath.Join(dir, ".devserve")
-	if err := os.MkdirAll(logDir, 0755); err != nil {
+	logDir := filepath.Join(dir, ProcessLogDir)
+	if err := os.MkdirAll(logDir, DirPermissions); err != nil {
 		return nil, fmt.Errorf("failed to create log directory: %w", err)
 	}
 
-	outFile, err := os.Create(filepath.Join(logDir, "out.log"))
+	outFile, err := os.Create(filepath.Join(logDir, ProcessStdoutLog))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create output log: %w", err)
 	}
-	errFile, err := os.Create(filepath.Join(logDir, "err.log"))
+	errFile, err := os.Create(filepath.Join(logDir, ProcessStderrLog))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create error log: %w", err)
 	}
@@ -52,8 +51,7 @@ func CreateProcess(name string, port int, dir string) (*Process, error) {
 }
 
 func (p *Process) Start(command string) error {
-	args := strings.Split(command, " ")
-	p.Cmd = exec.Command(args[0], args[1:]...)
+	p.Cmd = exec.Command("sh", "-c", command)
 
 	p.Cmd.Stderr = p.Stderr
 	p.Cmd.Stdout = p.Stdout
@@ -74,7 +72,7 @@ func (p *Process) Start(command string) error {
 	p.mu.Unlock()
 
 	log.Printf("waiting for port %d...", p.Port)
-	if err := WaitForPort(p.Port, 15*time.Second); err != nil {
+	if err := WaitForPort(p.Port, PortWaitTimeout); err != nil {
 		syscall.Kill(-p.Cmd.Process.Pid, syscall.SIGTERM)
 		p.closeLogs()
 		return fmt.Errorf("failed to wait for port %d: %w", p.Port, err)
@@ -122,7 +120,7 @@ func (p *Process) Stop() error {
 	select {
 	case <-done:
 		log.Printf("process %s exited gracefully", p.Name)
-	case <-time.After(5 * time.Second):
+	case <-time.After(StopGracePeriod):
 		log.Printf("process %s did not exit after SIGTERM, sending SIGKILL", p.Name)
 		if killErr := syscall.Kill(-p.Cmd.Process.Pid, syscall.SIGKILL); killErr != nil {
 			log.Printf("failed to SIGKILL process %s: %s", p.Name, killErr)

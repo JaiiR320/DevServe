@@ -10,26 +10,26 @@ import (
 )
 
 var (
-	green = lipgloss.NewStyle().Foreground(lipgloss.Color("2"))
-	red   = lipgloss.NewStyle().Foreground(lipgloss.Color("1"))
-	cyan  = lipgloss.NewStyle().Foreground(lipgloss.Color("6"))
-	bold  = lipgloss.NewStyle().Bold(true)
-	dim   = lipgloss.NewStyle().Faint(true)
+	Green = lipgloss.NewStyle().Foreground(lipgloss.Color("2"))
+	Red   = lipgloss.NewStyle().Foreground(lipgloss.Color("1"))
+	Cyan  = lipgloss.NewStyle().Foreground(lipgloss.Color("6"))
+	Bold  = lipgloss.NewStyle().Bold(true)
+	Dim   = lipgloss.NewStyle().Faint(true)
 )
 
 // Success returns a styled success message with a green checkmark.
 func Success(msg string) string {
-	return green.Render("✓") + " " + msg
+	return Green.Render("✓") + " " + msg
 }
 
 // Error returns a styled error message with a red cross.
 func Error(msg string) string {
-	return red.Render("✗") + " " + msg
+	return Red.Render("✗") + " " + msg
 }
 
 // Info returns a styled info message with a cyan bullet.
 func Info(msg string) string {
-	return cyan.Render("•") + " " + msg
+	return Cyan.Render("•") + " " + msg
 }
 
 // RenderTable parses the JSON list response and returns a formatted table string.
@@ -45,7 +45,7 @@ func RenderTable(data string) string {
 	}
 
 	if len(entries) == 0 {
-		return dim.Render("No active processes")
+		return Dim.Render("No active processes")
 	}
 
 	// Calculate column widths
@@ -64,7 +64,7 @@ func RenderTable(data string) string {
 	// Build table
 	var b strings.Builder
 	header := fmt.Sprintf("%-*s  %-*s", nameWidth, "NAME", portWidth, "PORT")
-	b.WriteString(bold.Render(header))
+	b.WriteString(Bold.Render(header))
 	for _, e := range entries {
 		b.WriteString("\n")
 		b.WriteString(fmt.Sprintf("%-*s  %-*d", nameWidth, e.Name, portWidth, e.Port))
@@ -80,26 +80,26 @@ func Spin(title string, fn func()) {
 
 // HelpTemplate returns a styled cobra help template.
 func HelpTemplate() string {
-	title := bold.Render("{{.Name}}")
+	title := Bold.Render("{{.Name}}")
 	return title + `{{if .Short}} - {{.Short}}{{end}}
 
-` + cyan.Render("Usage:") + `{{if .Runnable}}
+` + Cyan.Render("Usage:") + `{{if .Runnable}}
   {{.UseLine}}{{end}}{{if .HasAvailableSubCommands}}
   {{.CommandPath}} [command]{{end}}{{if gt (len .Aliases) 0}}
 
-` + cyan.Render("Aliases:") + `
+` + Cyan.Render("Aliases:") + `
   {{.NameAndAliases}}{{end}}{{if .HasAvailableSubCommands}}
 
-` + cyan.Render("Commands:") + `{{range .Commands}}{{if (or .IsAvailableCommand (eq .Name "help"))}}
+` + Cyan.Render("Commands:") + `{{range .Commands}}{{if (or .IsAvailableCommand (eq .Name "help"))}}
   {{rpad .Name .NamePadding}}  {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableLocalFlags}}
 
-` + cyan.Render("Flags:") + `
+` + Cyan.Render("Flags:") + `
 {{.LocalFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasAvailableInheritedFlags}}
 
-` + cyan.Render("Global Flags:") + `
+` + Cyan.Render("Global Flags:") + `
 {{.InheritedFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasHelpSubCommands}}
 
-` + cyan.Render("Additional help topics:") + `{{range .Commands}}{{if .IsAdditionalHelpTopicCommand}}
+` + Cyan.Render("Additional help topics:") + `{{range .Commands}}{{if .IsAdditionalHelpTopicCommand}}
   {{rpad .CommandPath .CommandPathPadding}} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableSubCommands}}
 
 Use "{{.CommandPath}} [command] --help" for more information about a command.{{end}}

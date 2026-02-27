@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"sync"
 	"syscall"
@@ -29,13 +30,13 @@ func Start(background bool) error {
 
 func startInBackground() error {
 	// Create log directory
-	err := os.MkdirAll("/tmp/devserve", 0755)
+	err := os.MkdirAll(internal.DaemonDir, internal.DirPermissions)
 	if err != nil {
 		return fmt.Errorf("failed to create log directory: %w", err)
 	}
 
 	// Create log file (truncate if exists)
-	logFile, err := os.Create("/tmp/devserve/out.log")
+	logFile, err := os.Create(filepath.Join(internal.DaemonDir, internal.DaemonLogFile))
 	if err != nil {
 		return fmt.Errorf("failed to open log file: %w", err)
 	}
@@ -71,7 +72,7 @@ func startInBackground() error {
 		}
 
 		// Wait a moment and verify daemon started with ping
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(internal.DaemonStartDelay)
 		pingReq := &internal.Request{Action: "ping"}
 		resp, err := internal.Send(pingReq)
 		if err != nil {
@@ -87,7 +88,7 @@ func startInBackground() error {
 		return startErr
 	}
 
-	fmt.Println(internal.Success("daemon started") + " " + internal.Info("logs: /tmp/devserve/out.log"))
+	fmt.Println(internal.Success("daemon started") + " " + internal.Info("logs: "+filepath.Join(internal.DaemonDir, internal.DaemonLogFile)))
 	return nil
 }
 
@@ -136,7 +137,7 @@ func startForeground() error {
 	}
 
 	// Stop all running child processes before exiting
-	failed := stopAllProcesses(15 * time.Second)
+	failed := stopAllProcesses(internal.ShutdownTimeout)
 	if len(failed) > 0 {
 		log.Printf("failed to stop processes on ports: %s", strings.Join(failed, ", "))
 	}
@@ -228,7 +229,7 @@ func handleConn(conn net.Conn, stop chan struct{}) {
 
 	if req.Action == "shutdown" {
 		log.Println("shutdown requested, stopping all processes")
-		failed := stopAllProcesses(15 * time.Second)
+		failed := stopAllProcesses(internal.ShutdownTimeout)
 		if len(failed) > 0 {
 			msg := fmt.Sprintf("daemon stopping, failed to stop ports: %s", strings.Join(failed, ", "))
 			internal.SendResponse(conn, internal.OkResponse(msg))

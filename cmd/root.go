@@ -10,7 +10,7 @@ import (
 
 var rootCmd = &cobra.Command{
 	Use:   "devserve",
-	Short: "Serve JavaScript projects with Tailscale",
+	Short: "Serve your local projects with Tailscale",
 	Long:  `Serve your local dev servers across your Tailscale network with devserve.`,
 }
 
