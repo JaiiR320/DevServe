@@ -75,11 +75,11 @@ Port utilities require real TCP listeners. Tests start/stop `net.Listen("tcp", .
 
 ### Tasks
 
-- [ ] **3.1** Test `CheckPortInUse` when port is free — pick an unused port, assert no error
-- [ ] **3.2** Test `CheckPortInUse` when port is occupied — start a TCP listener, assert error contains `"already in use"`
-- [ ] **3.3** Test `WaitForPort` when port is immediately available — start listener before calling, assert returns quickly with no error
-- [ ] **3.4** Test `WaitForPort` when port becomes available after a delay — start listener in a goroutine after 200ms, assert returns successfully
-- [ ] **3.5** Test `WaitForPort` timeout — never start a listener, use a short timeout (e.g. 300ms), assert error contains `"not ready after"`
+- [x] **3.1** Test `CheckPortInUse` when port is free — pick an unused port, assert no error
+- [x] **3.2** Test `CheckPortInUse` when port is occupied — start a TCP listener, assert error contains `"already in use"`
+- [x] **3.3** Test `WaitForPort` when port is immediately available — start listener before calling, assert returns quickly with no error
+- [x] **3.4** Test `WaitForPort` when port becomes available after a delay — start listener in a goroutine after 200ms, assert returns successfully
+- [x] **3.5** Test `WaitForPort` timeout — never start a listener, use a short timeout (e.g. 300ms), assert error contains `"not ready after"`
 
 ---
 
