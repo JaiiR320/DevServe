@@ -165,7 +165,9 @@ func StopAllProcesses(timeout time.Duration) []string {
 }
 
 // stopAllProcesses stops all running child processes concurrently.
-// Returns a list of port strings for processes that failed to stop within the timeout.
+// If a process fails to stop (e.g. tailscale serve fails to close), it retries
+// up to 3 times before giving up. Returns a list of port strings for processes
+// that ultimately failed to stop.
 func stopAllProcesses(timeout time.Duration) []string {
 	mu.Lock()
 	snapshot := make(map[string]*internal.Process, len(processes))
@@ -178,17 +180,20 @@ func stopAllProcesses(timeout time.Duration) []string {
 		return nil
 	}
 
+	const maxRetries = 3
+
 	type result struct {
-		name string
-		port int
-		err  error
+		name    string
+		port    int
+		err     error
+		attempt int
 	}
 
-	results := make(chan result, len(snapshot))
+	results := make(chan result, len(snapshot)*maxRetries)
 	for name, p := range snapshot {
 		go func(name string, p *internal.Process) {
 			err := p.Stop()
-			results <- result{name: name, port: p.Port, err: err}
+			results <- result{name: name, port: p.Port, err: err, attempt: 1}
 		}(name, p)
 	}
 
@@ -199,11 +204,22 @@ func stopAllProcesses(timeout time.Duration) []string {
 	for remaining > 0 {
 		select {
 		case r := <-results:
-			remaining--
 			if r.err != nil {
-				log.Printf("failed to stop %s (port %d): %s", r.name, r.port, r.err)
-				failed = append(failed, fmt.Sprintf("%d", r.port))
+				log.Printf("failed to stop %s (port %d) attempt %d: %s", r.name, r.port, r.attempt, r.err)
+				if r.attempt < maxRetries {
+					// Retry in a goroutine
+					p := snapshot[r.name]
+					go func(name string, p *internal.Process, attempt int) {
+						time.Sleep(time.Duration(attempt) * 500 * time.Millisecond)
+						err := p.Stop()
+						results <- result{name: name, port: p.Port, err: err, attempt: attempt + 1}
+					}(r.name, p, r.attempt)
+				} else {
+					remaining--
+					failed = append(failed, fmt.Sprintf("%d", r.port))
+				}
 			} else {
+				remaining--
 				log.Printf("stopped %s (port %d)", r.name, r.port)
 				mu.Lock()
 				delete(processes, r.name)

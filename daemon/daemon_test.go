@@ -2,7 +2,9 @@ package daemon
 
 import (
 	"devserve/internal"
+	"fmt"
 	"net"
+	"os/exec"
 	"strings"
 	"testing"
 	"time"
@@ -134,5 +136,84 @@ func TestStopAllProcessesEmpty(t *testing.T) {
 	failed := StopAllProcesses(time.Second)
 	if failed != nil {
 		t.Errorf("expected nil for empty map, got %v", failed)
+	}
+}
+
+func requireNC(t *testing.T) {
+	t.Helper()
+	if _, err := exec.LookPath("nc"); err != nil {
+		t.Skip("nc not available")
+	}
+}
+
+func freePort(t *testing.T) int {
+	t.Helper()
+	l, err := net.Listen("tcp", "localhost:0")
+	if err != nil {
+		t.Fatalf("failed to get free port: %v", err)
+	}
+	port := l.Addr().(*net.TCPAddr).Port
+	l.Close()
+	return port
+}
+
+// failOnceStopTunnel fails the first Stop() call per port, succeeds on retry.
+type failOnceStopTunnel struct {
+	failed map[int]bool
+}
+
+func (f *failOnceStopTunnel) Serve(port int) error { return nil }
+func (f *failOnceStopTunnel) Stop(port int) error {
+	if !f.failed[port] {
+		f.failed[port] = true
+		return fmt.Errorf("tailscale serve stop failed for port %d", port)
+	}
+	return nil
+}
+
+// Bug #16: When stopping multiple processes and tailscale stop fails on one,
+// stopAllProcesses should retry and ultimately close all tailscale serves.
+func TestStopAllProcessesRetriesTailscaleFailure(t *testing.T) {
+	requireNC(t)
+	ResetProcesses()
+	t.Cleanup(func() { ResetProcesses() })
+
+	tunnel := &failOnceStopTunnel{failed: make(map[int]bool)}
+	original := internal.DefaultTunnel
+	internal.DefaultTunnel = tunnel
+	t.Cleanup(func() { internal.DefaultTunnel = original })
+
+	// Start two real processes (simulating "core" on 5173 and "ui" on 5174)
+	port1 := freePort(t)
+	port2 := freePort(t)
+
+	p1, err := internal.CreateProcess("core", port1, t.TempDir())
+	if err != nil {
+		t.Fatalf("CreateProcess core failed: %v", err)
+	}
+	if err := p1.Start(fmt.Sprintf("nc -l %d", port1)); err != nil {
+		t.Fatalf("Start core failed: %v", err)
+	}
+
+	p2, err := internal.CreateProcess("ui", port2, t.TempDir())
+	if err != nil {
+		t.Fatalf("CreateProcess ui failed: %v", err)
+	}
+	if err := p2.Start(fmt.Sprintf("nc -l %d", port2)); err != nil {
+		t.Fatalf("Start ui failed: %v", err)
+	}
+
+	SetProcess("core", p1)
+	SetProcess("ui", p2)
+
+	failed := StopAllProcesses(10 * time.Second)
+
+	if len(failed) > 0 {
+		t.Errorf("expected all processes to stop successfully, but ports failed: %v", failed)
+	}
+
+	remaining := GetProcesses()
+	if len(remaining) != 0 {
+		t.Errorf("expected process map to be empty, got %d remaining", len(remaining))
 	}
 }

@@ -14,6 +14,21 @@ type noopTunnel struct{}
 func (noopTunnel) Serve(port int) error { return nil }
 func (noopTunnel) Stop(port int) error  { return nil }
 
+// failOnceStopTunnel fails the first Stop() call and succeeds on subsequent calls.
+// Serve() always succeeds. stopCalls tracks total Stop() invocations.
+type failOnceStopTunnel struct {
+	stopCalls int
+}
+
+func (f *failOnceStopTunnel) Serve(port int) error { return nil }
+func (f *failOnceStopTunnel) Stop(port int) error {
+	f.stopCalls++
+	if f.stopCalls == 1 {
+		return fmt.Errorf("tailscale serve stop failed")
+	}
+	return nil
+}
+
 func swapTunnel(t *testing.T) {
 	t.Helper()
 	original := DefaultTunnel
@@ -169,5 +184,47 @@ func TestProcessStopBeforeStart(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "has not been started") {
 		t.Errorf("expected error to contain %q, got %q", "has not been started", err.Error())
+	}
+}
+
+// Bug #16: When tailscale serve stop fails, a retry of Stop() should attempt
+// to close the tailscale serve again rather than returning "already stopped".
+func TestProcessStopCanRetryAfterTailscaleFailure(t *testing.T) {
+	requireNC(t)
+
+	tunnel := &failOnceStopTunnel{}
+	original := DefaultTunnel
+	DefaultTunnel = tunnel
+	t.Cleanup(func() { DefaultTunnel = original })
+
+	port := freePort(t)
+	dir := t.TempDir()
+	p, err := CreateProcess("testapp", port, dir)
+	if err != nil {
+		t.Fatalf("CreateProcess failed: %v", err)
+	}
+
+	cmd := fmt.Sprintf("nc -l %d", port)
+	if err := p.Start(cmd); err != nil {
+		t.Fatalf("Start failed: %v", err)
+	}
+
+	// First Stop: tailscale fails, should return error
+	err = p.Stop()
+	if err == nil {
+		t.Fatal("expected error from first Stop (tailscale failure), got nil")
+	}
+	if !strings.Contains(err.Error(), "tailscale") {
+		t.Fatalf("expected tailscale-related error, got %q", err.Error())
+	}
+
+	// Second Stop: should retry tailscale stop, not return "already stopped"
+	err = p.Stop()
+	if err != nil {
+		t.Fatalf("expected second Stop to succeed after tailscale retry, got %v", err)
+	}
+
+	if tunnel.stopCalls != 2 {
+		t.Errorf("expected tunnel Stop to be called 2 times, got %d", tunnel.stopCalls)
 	}
 }

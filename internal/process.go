@@ -19,9 +19,10 @@ type Process struct {
 	Stdout *os.File
 	Stderr *os.File
 
-	mu      sync.Mutex
-	started bool
-	stopped bool
+	mu            sync.Mutex
+	started       bool
+	stopped       bool
+	processKilled bool
 }
 
 // initialize out files, and process struct
@@ -98,38 +99,48 @@ func (p *Process) Stop() error {
 		p.mu.Unlock()
 		return fmt.Errorf("process '%s' is already stopped", p.Name)
 	}
-	p.stopped = true
+	needsKill := !p.processKilled
 	p.mu.Unlock()
 
-	log.Printf("stopping process %s (pid %d)", p.Name, p.Cmd.Process.Pid)
-	err := syscall.Kill(-p.Cmd.Process.Pid, syscall.SIGTERM)
-	if err != nil {
-		return fmt.Errorf("failed to send SIGTERM to process '%s': %w", p.Name, err)
-	}
-
-	// Wait for the process to exit with a 5s timeout, escalate to SIGKILL if needed
-	done := make(chan error, 1)
-	go func() {
-		done <- p.Cmd.Wait()
-	}()
-
-	select {
-	case <-done:
-		log.Printf("process %s exited gracefully", p.Name)
-	case <-time.After(StopGracePeriod):
-		log.Printf("process %s did not exit after SIGTERM, sending SIGKILL", p.Name)
-		if killErr := syscall.Kill(-p.Cmd.Process.Pid, syscall.SIGKILL); killErr != nil {
-			log.Printf("failed to SIGKILL process %s: %s", p.Name, killErr)
+	if needsKill {
+		log.Printf("stopping process %s (pid %d)", p.Name, p.Cmd.Process.Pid)
+		err := syscall.Kill(-p.Cmd.Process.Pid, syscall.SIGTERM)
+		if err != nil {
+			return fmt.Errorf("failed to send SIGTERM to process '%s': %w", p.Name, err)
 		}
-		<-done // wait for Wait() to return after SIGKILL
-		log.Printf("process %s killed with SIGKILL", p.Name)
-	}
 
-	p.closeLogs()
+		// Wait for the process to exit with a 5s timeout, escalate to SIGKILL if needed
+		done := make(chan error, 1)
+		go func() {
+			done <- p.Cmd.Wait()
+		}()
+
+		select {
+		case <-done:
+			log.Printf("process %s exited gracefully", p.Name)
+		case <-time.After(StopGracePeriod):
+			log.Printf("process %s did not exit after SIGTERM, sending SIGKILL", p.Name)
+			if killErr := syscall.Kill(-p.Cmd.Process.Pid, syscall.SIGKILL); killErr != nil {
+				log.Printf("failed to SIGKILL process %s: %s", p.Name, killErr)
+			}
+			<-done // wait for Wait() to return after SIGKILL
+			log.Printf("process %s killed with SIGKILL", p.Name)
+		}
+
+		p.closeLogs()
+
+		p.mu.Lock()
+		p.processKilled = true
+		p.mu.Unlock()
+	}
 
 	if err := DefaultTunnel.Stop(p.Port); err != nil {
 		return fmt.Errorf("failed to disable tailscale serve: %w", err)
 	}
+
+	p.mu.Lock()
+	p.stopped = true
+	p.mu.Unlock()
 	return nil
 }
 
