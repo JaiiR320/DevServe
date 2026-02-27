@@ -75,8 +75,8 @@ func startInBackground() error {
 
 		// Wait a moment and verify daemon started with ping
 		time.Sleep(util.DaemonStartDelay)
-		pingReq := &internal.Request{Action: "ping"}
-		resp, err := internal.Send(pingReq)
+		pingReq := &Request{Action: "ping"}
+		resp, err := Send(pingReq)
 		if err != nil {
 			startErr = fmt.Errorf("failed to start daemon: %w", err)
 			return
@@ -135,7 +135,7 @@ func startForeground() error {
 			}
 			continue
 		}
-		go handleConn(conn, stopChan)
+		go HandleConn(conn, stopChan)
 	}
 
 	// Stop all running child processes before exiting
@@ -149,8 +149,8 @@ func startForeground() error {
 }
 
 func Stop() (string, error) {
-	req := &internal.Request{Action: "shutdown"}
-	resp, err := internal.Send(req)
+	req := &Request{Action: "shutdown"}
+	resp, err := Send(req)
 	if err != nil {
 		return "", fmt.Errorf("failed to send shutdown request: %w", err)
 	}
@@ -241,13 +241,13 @@ func stopAllProcesses(timeout time.Duration) []string {
 	return failed
 }
 
-func handleConn(conn net.Conn, stop chan struct{}) {
+func HandleConn(conn net.Conn, stop chan struct{}) {
 	defer conn.Close()
 
-	req, err := internal.ReadRequest(conn)
+	req, err := ReadRequest(conn)
 	if err != nil {
 		log.Printf("failed to read request: %s", err)
-		internal.SendResponse(conn, internal.ErrResponse(err))
+		SendResponse(conn, ErrResponse(err))
 		return
 	}
 
@@ -256,15 +256,15 @@ func handleConn(conn net.Conn, stop chan struct{}) {
 		failed := stopAllProcesses(util.ShutdownTimeout)
 		if len(failed) > 0 {
 			msg := fmt.Sprintf("daemon stopping, failed to stop ports: %s", strings.Join(failed, ", "))
-			internal.SendResponse(conn, internal.OkResponse(msg))
+			SendResponse(conn, OkResponse(msg))
 		} else {
-			internal.SendResponse(conn, internal.OkResponse("daemon stopped, all processes terminated"))
+			SendResponse(conn, OkResponse("daemon stopped, all processes terminated"))
 		}
 		stop <- struct{}{}
 		return
 	}
 
-	var resp *internal.Response
+	var resp *Response
 	switch req.Action {
 	case "ping":
 		resp = handlePing(req.Args)
@@ -277,8 +277,8 @@ func handleConn(conn net.Conn, stop chan struct{}) {
 	case "logs":
 		resp = handleLogs(req.Args)
 	default:
-		resp = internal.ErrResponse(fmt.Errorf("unknown action '%s'", req.Action))
+		resp = ErrResponse(fmt.Errorf("unknown action '%s'", req.Action))
 	}
 
-	internal.SendResponse(conn, resp)
+	SendResponse(conn, resp)
 }

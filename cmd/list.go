@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"devserve/cli"
-	"devserve/internal"
+	"devserve/daemon"
 	"errors"
 	"fmt"
 
@@ -14,10 +14,10 @@ var listCmd = &cobra.Command{
 	Args:  cobra.NoArgs,
 	Short: "List processes",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		req := &internal.Request{
+		req := &daemon.Request{
 			Action: "list",
 		}
-		resp, err := internal.Send(req)
+		resp, err := daemon.Send(req)
 		if err != nil {
 			return fmt.Errorf("failed to send list request: %w", err)
 		}

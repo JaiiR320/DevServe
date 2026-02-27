@@ -1,6 +1,7 @@
-package daemon
+package daemon_test
 
 import (
+	"devserve/daemon"
 	"devserve/internal"
 	"fmt"
 	"net"
@@ -12,21 +13,21 @@ import (
 
 // Task 7.2: Test handleConn dispatches ping action
 func TestHandleConnPing(t *testing.T) {
-	ResetProcesses()
-	t.Cleanup(func() { ResetProcesses() })
+	daemon.ResetProcesses()
+	t.Cleanup(func() { daemon.ResetProcesses() })
 
 	client, server := net.Pipe()
 	defer client.Close()
 
 	stop := make(chan struct{}, 1)
 
-	go handleConn(server, stop)
+	go daemon.HandleConn(server, stop)
 
-	if err := internal.SendRequest(client, &internal.Request{Action: "ping"}); err != nil {
+	if err := daemon.SendRequest(client, &daemon.Request{Action: "ping"}); err != nil {
 		t.Fatalf("failed to send request: %v", err)
 	}
 
-	resp, err := internal.ReadResponse(client)
+	resp, err := daemon.ReadResponse(client)
 	if err != nil {
 		t.Fatalf("failed to read response: %v", err)
 	}
@@ -40,21 +41,21 @@ func TestHandleConnPing(t *testing.T) {
 
 // Task 7.3: Test handleConn with unknown action
 func TestHandleConnUnknownAction(t *testing.T) {
-	ResetProcesses()
-	t.Cleanup(func() { ResetProcesses() })
+	daemon.ResetProcesses()
+	t.Cleanup(func() { daemon.ResetProcesses() })
 
 	client, server := net.Pipe()
 	defer client.Close()
 
 	stop := make(chan struct{}, 1)
 
-	go handleConn(server, stop)
+	go daemon.HandleConn(server, stop)
 
-	if err := internal.SendRequest(client, &internal.Request{Action: "bogus"}); err != nil {
+	if err := daemon.SendRequest(client, &daemon.Request{Action: "bogus"}); err != nil {
 		t.Fatalf("failed to send request: %v", err)
 	}
 
-	resp, err := internal.ReadResponse(client)
+	resp, err := daemon.ReadResponse(client)
 	if err != nil {
 		t.Fatalf("failed to read response: %v", err)
 	}
@@ -68,22 +69,22 @@ func TestHandleConnUnknownAction(t *testing.T) {
 
 // Task 7.4: Test handleConn with malformed request
 func TestHandleConnMalformed(t *testing.T) {
-	ResetProcesses()
-	t.Cleanup(func() { ResetProcesses() })
+	daemon.ResetProcesses()
+	t.Cleanup(func() { daemon.ResetProcesses() })
 
 	client, server := net.Pipe()
 	defer client.Close()
 
 	stop := make(chan struct{}, 1)
 
-	go handleConn(server, stop)
+	go daemon.HandleConn(server, stop)
 
 	// Write garbage bytes followed by a newline (JSON decoder reads line-delimited)
 	if _, err := client.Write([]byte("not valid json\n")); err != nil {
 		t.Fatalf("failed to write garbage: %v", err)
 	}
 
-	resp, err := internal.ReadResponse(client)
+	resp, err := daemon.ReadResponse(client)
 	if err != nil {
 		t.Fatalf("failed to read response: %v", err)
 	}
@@ -94,21 +95,21 @@ func TestHandleConnMalformed(t *testing.T) {
 
 // Task 7.5: Test handleConn dispatches shutdown — stop channel is signaled
 func TestHandleConnShutdown(t *testing.T) {
-	ResetProcesses()
-	t.Cleanup(func() { ResetProcesses() })
+	daemon.ResetProcesses()
+	t.Cleanup(func() { daemon.ResetProcesses() })
 
 	client, server := net.Pipe()
 	defer client.Close()
 
 	stop := make(chan struct{}, 1)
 
-	go handleConn(server, stop)
+	go daemon.HandleConn(server, stop)
 
-	if err := internal.SendRequest(client, &internal.Request{Action: "shutdown"}); err != nil {
+	if err := daemon.SendRequest(client, &daemon.Request{Action: "shutdown"}); err != nil {
 		t.Fatalf("failed to send request: %v", err)
 	}
 
-	resp, err := internal.ReadResponse(client)
+	resp, err := daemon.ReadResponse(client)
 	if err != nil {
 		t.Fatalf("failed to read response: %v", err)
 	}
@@ -130,10 +131,10 @@ func TestHandleConnShutdown(t *testing.T) {
 
 // Task 7.6: Test StopAllProcesses with empty map — returns nil
 func TestStopAllProcessesEmpty(t *testing.T) {
-	ResetProcesses()
-	t.Cleanup(func() { ResetProcesses() })
+	daemon.ResetProcesses()
+	t.Cleanup(func() { daemon.ResetProcesses() })
 
-	failed := StopAllProcesses(time.Second)
+	failed := daemon.StopAllProcesses(time.Second)
 	if failed != nil {
 		t.Errorf("expected nil for empty map, got %v", failed)
 	}
@@ -175,8 +176,8 @@ func (f *failOnceStopTunnel) Stop(port int) error {
 // stopAllProcesses should retry and ultimately close all tailscale serves.
 func TestStopAllProcessesRetriesTailscaleFailure(t *testing.T) {
 	requireNC(t)
-	ResetProcesses()
-	t.Cleanup(func() { ResetProcesses() })
+	daemon.ResetProcesses()
+	t.Cleanup(func() { daemon.ResetProcesses() })
 
 	tunnel := &failOnceStopTunnel{failed: make(map[int]bool)}
 	original := internal.DefaultTunnel
@@ -203,16 +204,16 @@ func TestStopAllProcessesRetriesTailscaleFailure(t *testing.T) {
 		t.Fatalf("Start ui failed: %v", err)
 	}
 
-	SetProcess("core", p1)
-	SetProcess("ui", p2)
+	daemon.SetProcess("core", p1)
+	daemon.SetProcess("ui", p2)
 
-	failed := StopAllProcesses(10 * time.Second)
+	failed := daemon.StopAllProcesses(10 * time.Second)
 
 	if len(failed) > 0 {
 		t.Errorf("expected all processes to stop successfully, but ports failed: %v", failed)
 	}
 
-	remaining := GetProcesses()
+	remaining := daemon.GetProcesses()
 	if len(remaining) != 0 {
 		t.Errorf("expected process map to be empty, got %d remaining", len(remaining))
 	}

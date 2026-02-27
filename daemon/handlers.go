@@ -12,26 +12,26 @@ import (
 	"strings"
 )
 
-func handlePing(args map[string]any) *internal.Response {
-	return internal.OkResponse("pong")
+func handlePing(args map[string]any) *Response {
+	return OkResponse("pong")
 }
 
-func handleServe(args map[string]any) *internal.Response {
+func handleServe(args map[string]any) *Response {
 	name, ok := args["name"].(string)
 	if !ok || name == "" {
-		return internal.ErrResponse(fmt.Errorf("missing or invalid 'name' argument"))
+		return ErrResponse(fmt.Errorf("missing or invalid 'name' argument"))
 	}
 
 	mu.RLock()
 	_, exists := processes[name]
 	mu.RUnlock()
 	if exists {
-		return internal.ErrResponse(fmt.Errorf("process '%s' already in use", name))
+		return ErrResponse(fmt.Errorf("process '%s' already in use", name))
 	}
 
 	portVal, ok := args["port"]
 	if !ok {
-		return internal.ErrResponse(fmt.Errorf("missing or invalid 'port' argument"))
+		return ErrResponse(fmt.Errorf("missing or invalid 'port' argument"))
 	}
 	// JSON numbers decode as float64
 	var port int
@@ -42,20 +42,20 @@ func handleServe(args map[string]any) *internal.Response {
 		var err error
 		port, err = strconv.Atoi(v)
 		if err != nil {
-			return internal.ErrResponse(fmt.Errorf("invalid port: %w", err))
+			return ErrResponse(fmt.Errorf("invalid port: %w", err))
 		}
 	default:
-		return internal.ErrResponse(fmt.Errorf("invalid port type"))
+		return ErrResponse(fmt.Errorf("invalid port type"))
 	}
 
 	if err := internal.CheckPortInUse(port); err != nil {
 		log.Printf("port %d in use: %s", port, err)
-		return internal.ErrResponse(err)
+		return ErrResponse(err)
 	}
 
 	command, ok := args["command"].(string)
 	if !ok || command == "" {
-		return internal.ErrResponse(fmt.Errorf("missing or invalid 'command' argument"))
+		return ErrResponse(fmt.Errorf("missing or invalid 'command' argument"))
 	}
 
 	cwd, _ := args["cwd"].(string) // optional, empty string if not provided
@@ -63,46 +63,46 @@ func handleServe(args map[string]any) *internal.Response {
 	p, err := internal.CreateProcess(name, port, cwd)
 	if err != nil {
 		log.Printf("failed to create process '%s': %s", name, err)
-		return internal.ErrResponse(fmt.Errorf("failed to create process '%s': %w", name, err))
+		return ErrResponse(fmt.Errorf("failed to create process '%s': %w", name, err))
 	}
 
 	err = p.Start(command)
 	if err != nil {
 		log.Printf("failed to start process '%s': %s", name, err)
-		return internal.ErrResponse(fmt.Errorf("failed to start process '%s': %w", name, err))
+		return ErrResponse(fmt.Errorf("failed to start process '%s': %w", name, err))
 	}
 
 	mu.Lock()
 	processes[p.Name] = p
 	mu.Unlock()
 	log.Printf("started '%s' on port %d", name, port)
-	return internal.OkResponse(fmt.Sprintf("process '%s' started on port %d", name, port))
+	return OkResponse(fmt.Sprintf("process '%s' started on port %d", name, port))
 }
 
-func handleStop(args map[string]any) *internal.Response {
+func handleStop(args map[string]any) *Response {
 	name, ok := args["name"].(string)
 	if !ok || name == "" {
-		return internal.ErrResponse(fmt.Errorf("missing or invalid 'name' argument"))
+		return ErrResponse(fmt.Errorf("missing or invalid 'name' argument"))
 	}
 
 	mu.RLock()
 	p, exists := processes[name]
 	mu.RUnlock()
 	if !exists {
-		return internal.ErrResponse(fmt.Errorf("process '%s' not found", name))
+		return ErrResponse(fmt.Errorf("process '%s' not found", name))
 	}
 
 	err := p.Stop()
 	if err != nil {
 		log.Printf("failed to stop process '%s': %s", name, err)
-		return internal.ErrResponse(fmt.Errorf("failed to stop process '%s': %w", name, err))
+		return ErrResponse(fmt.Errorf("failed to stop process '%s': %w", name, err))
 	}
 
 	mu.Lock()
 	delete(processes, name)
 	mu.Unlock()
 	log.Printf("stopped '%s' (port %d)", name, p.Port)
-	return internal.OkResponse(fmt.Sprintf("process '%s' stopped", name))
+	return OkResponse(fmt.Sprintf("process '%s' stopped", name))
 }
 
 // tsRunner is the function used to fetch tailscale status JSON.
@@ -120,10 +120,10 @@ type listResponse struct {
 	IP        string      `json:"ip"`
 }
 
-func handleList(args map[string]any) *internal.Response {
+func handleList(args map[string]any) *Response {
 	info, err := internal.GetTailscaleInfo(tsRunner)
 	if err != nil {
-		return internal.ErrResponse(err)
+		return ErrResponse(err)
 	}
 
 	mu.RLock()
@@ -141,10 +141,10 @@ func handleList(args map[string]any) *internal.Response {
 
 	data, err := json.Marshal(lr)
 	if err != nil {
-		return internal.ErrResponse(fmt.Errorf("failed to marshal process list: %w", err))
+		return ErrResponse(fmt.Errorf("failed to marshal process list: %w", err))
 	}
 
-	return internal.OkResponse(string(data))
+	return OkResponse(string(data))
 }
 
 // ResetProcesses clears the processes map for test isolation.
@@ -175,17 +175,17 @@ func GetProcesses() map[string]*internal.Process {
 	return cp
 }
 
-func handleLogs(args map[string]any) *internal.Response {
+func handleLogs(args map[string]any) *Response {
 	name, ok := args["name"].(string)
 	if !ok || name == "" {
-		return internal.ErrResponse(fmt.Errorf("missing or invalid 'name' argument"))
+		return ErrResponse(fmt.Errorf("missing or invalid 'name' argument"))
 	}
 
 	mu.RLock()
 	p, exists := processes[name]
 	mu.RUnlock()
 	if !exists {
-		return internal.ErrResponse(fmt.Errorf("process '%s' not found", name))
+		return ErrResponse(fmt.Errorf("process '%s' not found", name))
 	}
 
 	lines := 50
@@ -201,13 +201,13 @@ func handleLogs(args map[string]any) *internal.Response {
 	stdoutLines, err := util.LastNLines(stdoutPath, lines)
 	if err != nil {
 		log.Printf("failed to read stdout log: %s", err)
-		return internal.ErrResponse(fmt.Errorf("failed to read stdout log: %w", err))
+		return ErrResponse(fmt.Errorf("failed to read stdout log: %w", err))
 	}
 
 	stderrLines, err := util.LastNLines(stderrPath, lines)
 	if err != nil {
 		log.Printf("failed to read stderr log: %s", err)
-		return internal.ErrResponse(fmt.Errorf("failed to read stderr log: %w", err))
+		return ErrResponse(fmt.Errorf("failed to read stderr log: %w", err))
 	}
 
 	headerStyle := cli.Cyan
@@ -228,5 +228,5 @@ func handleLogs(args map[string]any) *internal.Response {
 		b.WriteString("\n")
 	}
 
-	return internal.OkResponse(strings.TrimRight(b.String(), "\n"))
+	return OkResponse(strings.TrimRight(b.String(), "\n"))
 }

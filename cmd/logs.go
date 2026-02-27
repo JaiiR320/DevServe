@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"devserve/internal"
+	"devserve/daemon"
 	"errors"
 	"fmt"
 
@@ -14,14 +14,14 @@ var logsCmd = &cobra.Command{
 	Short: "Show process logs",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		lines, _ := cmd.Flags().GetInt("lines")
-		req := &internal.Request{
+		req := &daemon.Request{
 			Action: "logs",
 			Args: map[string]any{
 				"name":  args[0],
 				"lines": fmt.Sprintf("%d", lines),
 			},
 		}
-		resp, err := internal.Send(req)
+		resp, err := daemon.Send(req)
 		if err != nil {
 			return fmt.Errorf("failed to send logs request: %w", err)
 		}
