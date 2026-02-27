@@ -124,6 +124,34 @@ func handleList(args map[string]any) *internal.Response {
 	return internal.OkResponse(string(data))
 }
 
+// ResetProcesses clears the processes map for test isolation.
+func ResetProcesses() {
+	mu.Lock()
+	processes = make(map[string]*internal.Process)
+	mu.Unlock()
+}
+
+// SetProcess adds a process to the map (for test setup).
+func SetProcess(name string, p *internal.Process) {
+	mu.Lock()
+	if processes == nil {
+		processes = make(map[string]*internal.Process)
+	}
+	processes[name] = p
+	mu.Unlock()
+}
+
+// GetProcesses returns a copy of the processes map (for test assertions).
+func GetProcesses() map[string]*internal.Process {
+	mu.RLock()
+	defer mu.RUnlock()
+	cp := make(map[string]*internal.Process, len(processes))
+	for k, v := range processes {
+		cp[k] = v
+	}
+	return cp
+}
+
 func handleLogs(args map[string]any) *internal.Response {
 	name, ok := args["name"].(string)
 	if !ok || name == "" {

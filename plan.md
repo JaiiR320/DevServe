@@ -135,21 +135,21 @@ Handlers operate on the package-level `processes` map and `mu` mutex. We need to
 
 ### Tasks
 
-- [ ] **6.1** Add test helpers: export or create helper functions to initialize/reset the `processes` map and `mu` for tests (e.g. `ResetProcesses()`, `SetProcess(name, *Process)`, `GetProcesses()`)
-- [ ] **6.2** Test `handlePing` — assert returns `OkResponse` with data `"pong"`
-- [ ] **6.3** Test `handleServe` with missing `name` arg — assert error response with `"missing or invalid 'name'"`
-- [ ] **6.4** Test `handleServe` with missing `port` arg — assert error response
-- [ ] **6.5** Test `handleServe` with missing `command` arg — assert error response
-- [ ] **6.6** Test `handleServe` with duplicate name — pre-populate processes map, assert error `"already in use"`
-- [ ] **6.7** Test `handleServe` port type handling — test with `float64` (JSON number) and `string` port values
-- [ ] **6.8** Test `handleServe` with invalid port type — assert error `"invalid port type"`
-- [ ] **6.9** Test `handleStop` with missing name — assert error response
-- [ ] **6.10** Test `handleStop` with nonexistent process — assert error `"not found"`
-- [ ] **6.11** Test `handleList` with empty map — assert returns `OkResponse` with `"[]"` JSON
-- [ ] **6.12** Test `handleList` with populated map — pre-populate, assert JSON contains entries
-- [ ] **6.13** Test `handleLogs` with missing name — assert error response
-- [ ] **6.14** Test `handleLogs` with nonexistent process — assert error `"not found"`
-- [ ] **6.15** Test `handleLogs` with valid process — create process with log files containing known content, assert output contains stdout/stderr sections
+- [x] **6.1** Add test helpers: export or create helper functions to initialize/reset the `processes` map and `mu` for tests (e.g. `ResetProcesses()`, `SetProcess(name, *Process)`, `GetProcesses()`)
+- [x] **6.2** Test `handlePing` — assert returns `OkResponse` with data `"pong"`
+- [x] **6.3** Test `handleServe` with missing `name` arg — assert error response with `"missing or invalid 'name'"`
+- [x] **6.4** Test `handleServe` with missing `port` arg — assert error response
+- [x] **6.5** Test `handleServe` with missing `command` arg — assert error response
+- [x] **6.6** Test `handleServe` with duplicate name — pre-populate processes map, assert error `"already in use"`
+- [x] **6.7** Test `handleServe` port type handling — test with `float64` (JSON number) and `string` port values
+- [x] **6.8** Test `handleServe` with invalid port type — assert error `"invalid port type"`
+- [x] **6.9** Test `handleStop` with missing name — assert error response
+- [x] **6.10** Test `handleStop` with nonexistent process — assert error `"not found"`
+- [x] **6.11** Test `handleList` with empty map — assert returns `OkResponse` with `"[]"` JSON
+- [x] **6.12** Test `handleList` with populated map — pre-populate, assert JSON contains entries
+- [x] **6.13** Test `handleLogs` with missing name — assert error response
+- [x] **6.14** Test `handleLogs` with nonexistent process — assert error `"not found"`
+- [x] **6.15** Test `handleLogs` with valid process — create process with log files containing known content, assert output contains stdout/stderr sections
 
 ---
 
