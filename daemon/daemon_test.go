@@ -12,7 +12,6 @@ import (
 	"time"
 )
 
-// Task 7.2: Test handleConn dispatches ping action
 func TestHandleConnPing(t *testing.T) {
 	daemon.ResetProcesses()
 	t.Cleanup(func() { daemon.ResetProcesses() })
@@ -40,7 +39,6 @@ func TestHandleConnPing(t *testing.T) {
 	}
 }
 
-// Task 7.3: Test handleConn with unknown action
 func TestHandleConnUnknownAction(t *testing.T) {
 	daemon.ResetProcesses()
 	t.Cleanup(func() { daemon.ResetProcesses() })
@@ -68,7 +66,6 @@ func TestHandleConnUnknownAction(t *testing.T) {
 	}
 }
 
-// Task 7.4: Test handleConn with malformed request
 func TestHandleConnMalformed(t *testing.T) {
 	daemon.ResetProcesses()
 	t.Cleanup(func() { daemon.ResetProcesses() })
@@ -94,7 +91,6 @@ func TestHandleConnMalformed(t *testing.T) {
 	}
 }
 
-// Task 7.5: Test handleConn dispatches shutdown — stop channel is signaled
 func TestHandleConnShutdown(t *testing.T) {
 	daemon.ResetProcesses()
 	t.Cleanup(func() { daemon.ResetProcesses() })
@@ -130,7 +126,6 @@ func TestHandleConnShutdown(t *testing.T) {
 	}
 }
 
-// Task 7.6: Test StopAllProcesses with empty map — returns nil
 func TestStopAllProcessesEmpty(t *testing.T) {
 	daemon.ResetProcesses()
 	t.Cleanup(func() { daemon.ResetProcesses() })

@@ -31,33 +31,28 @@ func Start(background bool) error {
 }
 
 func startInBackground() error {
-	// Create log directory
 	err := os.MkdirAll(util.DaemonDir, util.DirPermissions)
 	if err != nil {
 		return fmt.Errorf("failed to create log directory: %w", err)
 	}
 
-	// Create log file (truncate if exists)
 	logFile, err := os.Create(filepath.Join(util.DaemonDir, util.DaemonLogFile))
 	if err != nil {
 		return fmt.Errorf("failed to open log file: %w", err)
 	}
 	defer logFile.Close()
 
-	// Check if daemon already running
 	conn, err := net.Dial("unix", util.Socket)
 	if err == nil {
 		conn.Close()
 		return errors.New("daemon is already running")
 	}
 
-	// Get the current executable path
 	execPath, err := os.Executable()
 	if err != nil {
 		return fmt.Errorf("failed to get executable path: %w", err)
 	}
 
-	// Fork process
 	cmd := exec.Command(execPath, "daemon", "start", "--foreground")
 	cmd.Stdout = logFile
 	cmd.Stderr = logFile
@@ -160,16 +155,12 @@ func Stop() (string, error) {
 	return resp.Data, nil
 }
 
-// StopAllProcesses is exported for testing. It stops all running processes
-// with the given timeout and returns ports that failed to stop.
+// StopAllProcesses is exported for testing.
 func StopAllProcesses(timeout time.Duration) []string {
 	return stopAllProcesses(timeout)
 }
 
-// stopAllProcesses stops all running child processes concurrently.
-// If a process fails to stop (e.g. tailscale serve fails to close), it retries
-// up to 3 times before giving up. Returns a list of port strings for processes
-// that ultimately failed to stop.
+// stopAllProcesses stops all running child processes with retry logic.
 func stopAllProcesses(timeout time.Duration) []string {
 	mu.Lock()
 	snapshot := make(map[string]*process.Process, len(processes))
@@ -209,7 +200,6 @@ func stopAllProcesses(timeout time.Duration) []string {
 			if r.err != nil {
 				log.Printf("failed to stop %s (port %d) attempt %d: %s", r.name, r.port, r.attempt, r.err)
 				if r.attempt < maxRetries {
-					// Retry in a goroutine
 					p := snapshot[r.name]
 					go func(name string, p *process.Process, attempt int) {
 						time.Sleep(time.Duration(attempt) * 500 * time.Millisecond)
@@ -228,7 +218,6 @@ func stopAllProcesses(timeout time.Duration) []string {
 				mu.Unlock()
 			}
 		case <-timer:
-			// Collect any remaining processes as failed
 			mu.RLock()
 			for _, p := range processes {
 				failed = append(failed, fmt.Sprintf("%d", p.Port))

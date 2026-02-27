@@ -165,7 +165,6 @@ func SetProcess(name string, p *process.Process) {
 	mu.Unlock()
 }
 
-// GetProcesses returns a copy of the processes map (for test assertions).
 func GetProcesses() map[string]*process.Process {
 	mu.RLock()
 	defer mu.RUnlock()

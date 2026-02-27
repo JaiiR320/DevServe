@@ -21,7 +21,6 @@ func freePort(t *testing.T) int {
 	return port
 }
 
-// Task 3.1: Test CheckPortInUse when port is free
 func TestCheckPortInUseFree(t *testing.T) {
 	port := freePort(t)
 
@@ -31,7 +30,6 @@ func TestCheckPortInUseFree(t *testing.T) {
 	}
 }
 
-// Task 3.2: Test CheckPortInUse when port is occupied
 func TestCheckPortInUseOccupied(t *testing.T) {
 	l, err := net.Listen("tcp", "localhost:0")
 	if err != nil {
@@ -49,7 +47,6 @@ func TestCheckPortInUseOccupied(t *testing.T) {
 	}
 }
 
-// Task 3.3: Test WaitForPort when port is immediately available
 func TestWaitForPortImmediate(t *testing.T) {
 	l, err := net.Listen("tcp", "localhost:0")
 	if err != nil {
@@ -70,7 +67,6 @@ func TestWaitForPortImmediate(t *testing.T) {
 	}
 }
 
-// Task 3.4: Test WaitForPort when port becomes available after a delay
 func TestWaitForPortDelayed(t *testing.T) {
 	port := freePort(t)
 
@@ -96,7 +92,6 @@ func TestWaitForPortDelayed(t *testing.T) {
 	}
 }
 
-// Task 3.5: Test WaitForPort timeout
 func TestWaitForPortTimeout(t *testing.T) {
 	port := freePort(t)
 

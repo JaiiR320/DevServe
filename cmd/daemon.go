@@ -11,9 +11,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// daemonCmd represents the daemon command
 var daemonCmd = &cobra.Command{
 	Use:   "daemon",
+	Args:  cobra.NoArgs,
 	Short: "Interact with the daemon",
 }
 

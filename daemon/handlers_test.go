@@ -31,7 +31,6 @@ func resetState(t *testing.T) {
 	t.Cleanup(func() { ResetProcesses() })
 }
 
-// Task 6.2: Test handlePing — assert returns OkResponse with data "pong"
 func TestHandlePing(t *testing.T) {
 	resp := handlePing(nil)
 
@@ -43,7 +42,6 @@ func TestHandlePing(t *testing.T) {
 	}
 }
 
-// Task 6.3: Test handleServe with missing name arg
 func TestHandleServeMissingName(t *testing.T) {
 	resetState(t)
 
@@ -57,7 +55,6 @@ func TestHandleServeMissingName(t *testing.T) {
 	}
 }
 
-// Task 6.4: Test handleServe with missing port arg
 func TestHandleServeMissingPort(t *testing.T) {
 	resetState(t)
 
@@ -71,7 +68,6 @@ func TestHandleServeMissingPort(t *testing.T) {
 	}
 }
 
-// Task 6.5: Test handleServe with missing command arg
 func TestHandleServeMissingCommand(t *testing.T) {
 	resetState(t)
 
@@ -94,7 +90,6 @@ func TestHandleServeMissingCommand(t *testing.T) {
 	}
 }
 
-// Task 6.6: Test handleServe with duplicate name
 func TestHandleServeDuplicateName(t *testing.T) {
 	resetState(t)
 
@@ -114,7 +109,6 @@ func TestHandleServeDuplicateName(t *testing.T) {
 	}
 }
 
-// Task 6.7: Test handleServe port type handling — float64 (JSON number) and string
 func TestHandleServePortTypes(t *testing.T) {
 	resetState(t)
 
@@ -152,7 +146,6 @@ func TestHandleServePortTypes(t *testing.T) {
 	})
 }
 
-// Task 6.8: Test handleServe with invalid port type
 func TestHandleServeInvalidPortType(t *testing.T) {
 	resetState(t)
 
@@ -170,7 +163,6 @@ func TestHandleServeInvalidPortType(t *testing.T) {
 	}
 }
 
-// Task 6.9: Test handleStop with missing name
 func TestHandleStopMissingName(t *testing.T) {
 	resetState(t)
 
@@ -184,7 +176,6 @@ func TestHandleStopMissingName(t *testing.T) {
 	}
 }
 
-// Task 6.10: Test handleStop with nonexistent process
 func TestHandleStopNotFound(t *testing.T) {
 	resetState(t)
 
@@ -198,7 +189,6 @@ func TestHandleStopNotFound(t *testing.T) {
 	}
 }
 
-// Task 6.11: Test handleList with empty map
 func TestHandleListEmpty(t *testing.T) {
 	resetState(t)
 
@@ -229,7 +219,6 @@ func TestHandleListEmpty(t *testing.T) {
 	}
 }
 
-// Task 6.12: Test handleList with populated map
 func TestHandleListPopulated(t *testing.T) {
 	resetState(t)
 
@@ -272,7 +261,6 @@ func TestHandleListPopulated(t *testing.T) {
 	}
 }
 
-// Test handleList when tailscale is unavailable — returns error response
 func TestHandleListTailscaleUnavailable(t *testing.T) {
 	resetState(t)
 
@@ -292,7 +280,6 @@ func TestHandleListTailscaleUnavailable(t *testing.T) {
 	}
 }
 
-// Task 6.13: Test handleLogs with missing name
 func TestHandleLogsMissingName(t *testing.T) {
 	resetState(t)
 
@@ -306,7 +293,6 @@ func TestHandleLogsMissingName(t *testing.T) {
 	}
 }
 
-// Task 6.14: Test handleLogs with nonexistent process
 func TestHandleLogsNotFound(t *testing.T) {
 	resetState(t)
 
@@ -320,7 +306,6 @@ func TestHandleLogsNotFound(t *testing.T) {
 	}
 }
 
-// Task 6.15: Test handleLogs with valid process — log files with known content
 func TestHandleLogsValid(t *testing.T) {
 	resetState(t)
 

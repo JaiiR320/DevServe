@@ -9,7 +9,6 @@ import (
 	"testing"
 )
 
-// Task 2.1: Test LastNLines with more lines than N
 func TestLastNLinesMoreThanN(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "test.log")
 	lines := make([]string, 10)
@@ -32,7 +31,6 @@ func TestLastNLinesMoreThanN(t *testing.T) {
 	}
 }
 
-// Task 2.2: Test LastNLines with fewer lines than N
 func TestLastNLinesFewerThanN(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "test.log")
 	os.WriteFile(path, []byte("line 1\nline 2\nline 3\n"), 0644)
@@ -51,7 +49,6 @@ func TestLastNLinesFewerThanN(t *testing.T) {
 	}
 }
 
-// Task 2.3: Test LastNLines with exactly N lines
 func TestLastNLinesExactlyN(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "test.log")
 	os.WriteFile(path, []byte("a\nb\nc\nd\ne\n"), 0644)
@@ -70,7 +67,6 @@ func TestLastNLinesExactlyN(t *testing.T) {
 	}
 }
 
-// Task 2.4: Test LastNLines with empty file
 func TestLastNLinesEmptyFile(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "empty.log")
 	os.WriteFile(path, []byte(""), 0644)
@@ -84,7 +80,6 @@ func TestLastNLinesEmptyFile(t *testing.T) {
 	}
 }
 
-// Task 2.5: Test LastNLines with nonexistent file
 func TestLastNLinesNonexistentFile(t *testing.T) {
 	got, err := util.LastNLines("/tmp/does-not-exist-ever-12345.log", 5)
 	if err != nil {
@@ -95,7 +90,6 @@ func TestLastNLinesNonexistentFile(t *testing.T) {
 	}
 }
 
-// Task 2.6: Test LastNLines with trailing newlines
 func TestLastNLinesTrailingNewlines(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "test.log")
 	os.WriteFile(path, []byte("line 1\nline 2\n\n\n"), 0644)
@@ -111,7 +105,6 @@ func TestLastNLinesTrailingNewlines(t *testing.T) {
 	}
 }
 
-// Task 2.7: Test LastNLines with single line, no trailing newline
 func TestLastNLinesSingleLineNoNewline(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "test.log")
 	os.WriteFile(path, []byte("only line"), 0644)

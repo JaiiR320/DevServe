@@ -10,7 +10,6 @@ import (
 // ErrDaemonNotRunning is returned when the daemon socket cannot be reached.
 var ErrDaemonNotRunning = errors.New("daemon is not running")
 
-// Send a request to the daemon and return the response
 func Send(req *Request) (*Response, error) {
 	conn, err := net.Dial("unix", util.Socket)
 	if err != nil {

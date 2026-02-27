@@ -46,7 +46,6 @@ func requireNC(t *testing.T) {
 	}
 }
 
-// Task 5.3: Test CreateProcess — assert .devserve/ directory and log files created
 func TestCreateProcess(t *testing.T) {
 	dir := t.TempDir()
 	p, err := process.CreateProcess("testapp", 3000, dir)
@@ -73,7 +72,6 @@ func TestCreateProcess(t *testing.T) {
 	}
 }
 
-// Task 5.4: Test CreateProcess with invalid directory
 func TestCreateProcessInvalidDir(t *testing.T) {
 	_, err := process.CreateProcess("testapp", 3000, "/dev/null/bad")
 	if err == nil {
@@ -84,7 +82,6 @@ func TestCreateProcessInvalidDir(t *testing.T) {
 	}
 }
 
-// Task 5.5: Test Start with a simple command
 func TestProcessStart(t *testing.T) {
 	requireNC(t)
 	swapTunnel(t)
@@ -110,7 +107,6 @@ func TestProcessStart(t *testing.T) {
 	// nc -l exits after the first connection, so we just verify the process started.
 }
 
-// Task 5.6: Test Stop after Start — start a process, stop it, assert logs closed
 func TestProcessStopAfterStart(t *testing.T) {
 	requireNC(t)
 	swapTunnel(t)
@@ -141,7 +137,6 @@ func TestProcessStopAfterStart(t *testing.T) {
 	}
 }
 
-// Task 5.7: Test Stop idempotency — call Stop() twice, assert "already stopped"
 func TestProcessStopIdempotent(t *testing.T) {
 	requireNC(t)
 	swapTunnel(t)
@@ -171,7 +166,6 @@ func TestProcessStopIdempotent(t *testing.T) {
 	}
 }
 
-// Task 5.8: Test Stop before Start — assert "has not been started"
 func TestProcessStopBeforeStart(t *testing.T) {
 	dir := t.TempDir()
 	p, err := process.CreateProcess("testapp", 3000, dir)

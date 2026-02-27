@@ -27,7 +27,6 @@ type Process struct {
 	processKilled bool
 }
 
-// initialize out files, and process struct
 func CreateProcess(name string, port int, dir string) (*Process, error) {
 	logDir := filepath.Join(dir, util.ProcessLogDir)
 	if err := os.MkdirAll(logDir, util.DirPermissions); err != nil {

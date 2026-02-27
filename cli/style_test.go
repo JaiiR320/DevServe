@@ -6,7 +6,6 @@ import (
 	"testing"
 )
 
-// Task 4.1: Test Success — assert output contains "✓" and the message string
 func TestSuccess(t *testing.T) {
 	out := cli.Success("process started")
 	if !strings.Contains(out, "✓") {
@@ -17,7 +16,6 @@ func TestSuccess(t *testing.T) {
 	}
 }
 
-// Task 4.2: Test Error — assert output contains "✗" and the message string
 func TestError(t *testing.T) {
 	out := cli.Error("connection failed")
 	if !strings.Contains(out, "✗") {
@@ -28,7 +26,6 @@ func TestError(t *testing.T) {
 	}
 }
 
-// Task 4.3: Test Info — assert output contains "•" and the message string
 func TestInfo(t *testing.T) {
 	out := cli.Info("checking status")
 	if !strings.Contains(out, "•") {
@@ -39,7 +36,6 @@ func TestInfo(t *testing.T) {
 	}
 }
 
-// Task 4.4: Test RenderTable with valid JSON — new format with processes, hostname, IP
 func TestRenderTableValid(t *testing.T) {
 	input := `{"processes":[{"name":"app","port":3000}],"hostname":"host.example.ts.net","ip":"100.1.2.3"}`
 	out := cli.RenderTable(input)
@@ -61,7 +57,6 @@ func TestRenderTableValid(t *testing.T) {
 	}
 }
 
-// Task 4.5: Test RenderTable with multiple entries
 func TestRenderTableMultiple(t *testing.T) {
 	input := `{"processes":[{"name":"web","port":8080},{"name":"api","port":9090}],"hostname":"host.example.ts.net","ip":"100.1.2.3"}`
 	out := cli.RenderTable(input)
@@ -73,7 +68,6 @@ func TestRenderTableMultiple(t *testing.T) {
 	}
 }
 
-// Task 4.6: Test RenderTable with empty processes array
 func TestRenderTableEmpty(t *testing.T) {
 	out := cli.RenderTable(`{"processes":[],"hostname":"host.example.ts.net","ip":"100.1.2.3"}`)
 	if !strings.Contains(out, "No active processes") {
@@ -81,7 +75,6 @@ func TestRenderTableEmpty(t *testing.T) {
 	}
 }
 
-// Task 4.7: Test RenderTable with invalid JSON — assert raw input is returned as fallback
 func TestRenderTableInvalidJSON(t *testing.T) {
 	input := "this is not json"
 	out := cli.RenderTable(input)
@@ -90,7 +83,6 @@ func TestRenderTableInvalidJSON(t *testing.T) {
 	}
 }
 
-// Test RenderTable hyperlinks contain correct URLs
 func TestRenderTableHyperlinks(t *testing.T) {
 	input := `{"processes":[{"name":"app","port":3000}],"hostname":"host.example.ts.net","ip":"100.1.2.3"}`
 	out := cli.RenderTable(input)
@@ -107,7 +99,6 @@ func TestRenderTableHyperlinks(t *testing.T) {
 	}
 }
 
-// Test Hyperlink — assert OSC 8 escape sequences wrap the label with the URL
 func TestHyperlink(t *testing.T) {
 	url := "https://example.com"
 	label := "click"
@@ -129,7 +120,6 @@ func TestHyperlink(t *testing.T) {
 	}
 }
 
-// Task 4.8: Test HelpTemplate — assert returns non-empty string containing "Usage:" and "Commands:"
 func TestHelpTemplate(t *testing.T) {
 	tmpl := cli.HelpTemplate()
 	if tmpl == "" {

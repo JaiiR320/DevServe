@@ -9,7 +9,6 @@ import (
 	"testing"
 )
 
-// Task 1.1: Test OkResponse — returns Response{OK: true, Data: data}
 func TestOkResponse(t *testing.T) {
 	resp := daemon.OkResponse("hello world")
 
@@ -24,7 +23,6 @@ func TestOkResponse(t *testing.T) {
 	}
 }
 
-// Task 1.2: Test ErrResponse — returns Response{OK: false, Error: err.Error()}
 func TestErrResponse(t *testing.T) {
 	err := errors.New("something went wrong")
 	resp := daemon.ErrResponse(err)
@@ -40,7 +38,6 @@ func TestErrResponse(t *testing.T) {
 	}
 }
 
-// Task 1.3: Test SendRequest / ReadRequest round-trip
 func TestSendReadRequestRoundTrip(t *testing.T) {
 	client, server := net.Pipe()
 	defer client.Close()
@@ -76,7 +73,6 @@ func TestSendReadRequestRoundTrip(t *testing.T) {
 	}
 }
 
-// Task 1.4: Test SendResponse / ReadResponse round-trip
 func TestSendReadResponseRoundTrip(t *testing.T) {
 	client, server := net.Pipe()
 	defer client.Close()
@@ -109,7 +105,6 @@ func TestSendReadResponseRoundTrip(t *testing.T) {
 	}
 }
 
-// Task 1.5: Test ReadRequest with malformed JSON
 func TestReadRequestMalformedJSON(t *testing.T) {
 	client, server := net.Pipe()
 	defer server.Close()
@@ -128,7 +123,6 @@ func TestReadRequestMalformedJSON(t *testing.T) {
 	}
 }
 
-// Task 1.6: Test ReadResponse with malformed JSON
 func TestReadResponseMalformedJSON(t *testing.T) {
 	client, server := net.Pipe()
 	defer server.Close()
@@ -147,7 +141,6 @@ func TestReadResponseMalformedJSON(t *testing.T) {
 	}
 }
 
-// Task 1.7: Test Request with nil/empty Args — omitempty behavior
 func TestRequestOmitEmptyArgs(t *testing.T) {
 	t.Run("nil args omitted", func(t *testing.T) {
 		req := daemon.Request{Action: "ping", Args: nil}
@@ -172,7 +165,6 @@ func TestRequestOmitEmptyArgs(t *testing.T) {
 	})
 }
 
-// Task 1.8: Test Response with empty Data/Error — omitempty behavior
 func TestResponseOmitEmptyFields(t *testing.T) {
 	t.Run("ok response omits error", func(t *testing.T) {
 		resp := daemon.Response{OK: true, Data: "result"}

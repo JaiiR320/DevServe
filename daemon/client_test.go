@@ -7,7 +7,6 @@ import (
 	"testing"
 )
 
-// Task 7.1: Test Send returns ErrDaemonNotRunning when no socket exists
 func TestSendDaemonNotRunning(t *testing.T) {
 	original := util.Socket
 	util.Socket = "/tmp/devserve-test-nonexistent.sock"
