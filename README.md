@@ -29,15 +29,15 @@ devserve stop myapp
 devserve daemon stop
 ```
 
-Your app is now available at `https://<your-machine>:3000` across your tailnet.
+Your app is now available at `https://<your-tailnet-magicdns>:3000` across your tailnet.
 
 ## Logs
 
 Stdout and stderr are redirected to files so they don't clutter your terminal:
 
 ```
-/tmp/<name>.out.log
-/tmp/<name>.err.log
+/.devserve/out.log
+/.devserve/err.log
 ```
 
 ## How it works
