@@ -265,6 +265,8 @@ func HandleConn(conn net.Conn, stop chan struct{}) {
 		resp = handleList(req.Args)
 	case "logs":
 		resp = handleLogs(req.Args)
+	case "get":
+		resp = handleGet(req.Args)
 	default:
 		resp = ErrResponse(fmt.Errorf("unknown action '%s'", req.Action))
 	}

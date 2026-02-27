@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"devserve/config"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -92,6 +93,68 @@ func RenderTable(data string) string {
 			localPad, localLink,
 			ipPad, ipLink,
 			dnsLink))
+	}
+
+	return b.String()
+}
+
+// RenderConfigTable renders a list of ProcessConfig entries as a formatted table.
+func RenderConfigTable(configs []config.ProcessConfig) string {
+	if len(configs) == 0 {
+		return Dim.Render("No saved configurations")
+	}
+
+	// Calculate column widths
+	nameWidth := 4 // "NAME"
+	portWidth := 4 // "PORT"
+	cmdWidth := 7  // "COMMAND"
+	dirWidth := 9  // "DIRECTORY"
+
+	for _, c := range configs {
+		if len(c.Name) > nameWidth {
+			nameWidth = len(c.Name)
+		}
+		p := fmt.Sprintf("%d", c.Port)
+		if len(p) > portWidth {
+			portWidth = len(p)
+		}
+		if len(c.Command) > cmdWidth {
+			cmdWidth = len(c.Command)
+		}
+		if len(c.Directory) > dirWidth {
+			dirWidth = len(c.Directory)
+		}
+	}
+
+	// Truncate long values
+	maxCmdWidth := 40
+	maxDirWidth := 50
+	if cmdWidth > maxCmdWidth {
+		cmdWidth = maxCmdWidth
+	}
+	if dirWidth > maxDirWidth {
+		dirWidth = maxDirWidth
+	}
+
+	// Build table
+	var b strings.Builder
+	header := fmt.Sprintf("%-*s  %-*s  %-*s  %-*s",
+		nameWidth, "NAME", portWidth, "PORT", cmdWidth, "COMMAND", dirWidth, "DIRECTORY")
+	b.WriteString(Bold.Render(header))
+
+	for _, c := range configs {
+		cmd := c.Command
+		if len(cmd) > maxCmdWidth {
+			cmd = cmd[:maxCmdWidth-3] + "..."
+		}
+		dir := c.Directory
+		if len(dir) > maxDirWidth {
+			dir = dir[:maxDirWidth-3] + "..."
+		}
+
+		b.WriteString("\n")
+		b.WriteString(fmt.Sprintf("%-*s  %-*d  %-*s  %s",
+			nameWidth, c.Name, portWidth, c.Port, cmdWidth, cmd, dir))
 	}
 
 	return b.String()

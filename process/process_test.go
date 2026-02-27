@@ -48,7 +48,7 @@ func requireNC(t *testing.T) {
 
 func TestCreateProcess(t *testing.T) {
 	dir := t.TempDir()
-	p, err := process.CreateProcess("testapp", 3000, dir)
+	p, err := process.CreateProcess("testapp", 3000, dir, "echo test")
 	if err != nil {
 		t.Fatalf("CreateProcess failed: %v", err)
 	}
@@ -73,7 +73,7 @@ func TestCreateProcess(t *testing.T) {
 }
 
 func TestCreateProcessInvalidDir(t *testing.T) {
-	_, err := process.CreateProcess("testapp", 3000, "/dev/null/bad")
+	_, err := process.CreateProcess("testapp", 3000, "/dev/null/bad", "echo test")
 	if err == nil {
 		t.Fatal("expected error for invalid directory, got nil")
 	}
@@ -88,7 +88,7 @@ func TestProcessStart(t *testing.T) {
 
 	port := freePort(t)
 	dir := t.TempDir()
-	p, err := process.CreateProcess("testapp", port, dir)
+	p, err := process.CreateProcess("testapp", port, dir, "echo test")
 	if err != nil {
 		t.Fatalf("CreateProcess failed: %v", err)
 	}
@@ -113,7 +113,7 @@ func TestProcessStopAfterStart(t *testing.T) {
 
 	port := freePort(t)
 	dir := t.TempDir()
-	p, err := process.CreateProcess("testapp", port, dir)
+	p, err := process.CreateProcess("testapp", port, dir, "echo test")
 	if err != nil {
 		t.Fatalf("CreateProcess failed: %v", err)
 	}
@@ -143,7 +143,7 @@ func TestProcessStopIdempotent(t *testing.T) {
 
 	port := freePort(t)
 	dir := t.TempDir()
-	p, err := process.CreateProcess("testapp", port, dir)
+	p, err := process.CreateProcess("testapp", port, dir, "echo test")
 	if err != nil {
 		t.Fatalf("CreateProcess failed: %v", err)
 	}
@@ -168,7 +168,7 @@ func TestProcessStopIdempotent(t *testing.T) {
 
 func TestProcessStopBeforeStart(t *testing.T) {
 	dir := t.TempDir()
-	p, err := process.CreateProcess("testapp", 3000, dir)
+	p, err := process.CreateProcess("testapp", 3000, dir, "echo test")
 	if err != nil {
 		t.Fatalf("CreateProcess failed: %v", err)
 	}
@@ -196,7 +196,7 @@ func TestProcessStopCanRetryAfterTailscaleFailure(t *testing.T) {
 
 	port := freePort(t)
 	dir := t.TempDir()
-	p, err := process.CreateProcess("testapp", port, dir)
+	p, err := process.CreateProcess("testapp", port, dir, "echo test")
 	if err != nil {
 		t.Fatalf("CreateProcess failed: %v", err)
 	}

@@ -184,7 +184,7 @@ func TestStopAllProcessesRetriesTailscaleFailure(t *testing.T) {
 	port1 := freePort(t)
 	port2 := freePort(t)
 
-	p1, err := process.CreateProcess("core", port1, t.TempDir())
+	p1, err := process.CreateProcess("core", port1, t.TempDir(), "echo test")
 	if err != nil {
 		t.Fatalf("CreateProcess core failed: %v", err)
 	}
@@ -192,7 +192,7 @@ func TestStopAllProcessesRetriesTailscaleFailure(t *testing.T) {
 		t.Fatalf("Start core failed: %v", err)
 	}
 
-	p2, err := process.CreateProcess("ui", port2, t.TempDir())
+	p2, err := process.CreateProcess("ui", port2, t.TempDir(), "echo test")
 	if err != nil {
 		t.Fatalf("CreateProcess ui failed: %v", err)
 	}

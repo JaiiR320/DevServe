@@ -2,13 +2,16 @@ package config
 
 import (
 	"os"
+	"path/filepath"
 	"time"
 )
 
 // Paths
 var (
-	DaemonDir = "/tmp/devserve"
-	Socket    = "/tmp/devserve.daemon.sock"
+	DaemonDir  = "/tmp/devserve"
+	Socket     = "/tmp/devserve.daemon.sock"
+	ConfigDir  = filepath.Join(os.Getenv("HOME"), ".config", "devserve")
+	ConfigFile = filepath.Join(ConfigDir, "config.json")
 )
 
 const (

@@ -62,7 +62,7 @@ func handleServe(args map[string]any) *Response {
 
 	cwd, _ := args["cwd"].(string) // optional, empty string if not provided
 
-	p, err := process.CreateProcess(name, port, cwd)
+	p, err := process.CreateProcess(name, port, cwd, command)
 	if err != nil {
 		log.Printf("failed to create process '%s': %s", name, err)
 		return ErrResponse(fmt.Errorf("failed to create process '%s': %w", name, err))
@@ -230,4 +230,33 @@ func handleLogs(args map[string]any) *Response {
 	}
 
 	return OkResponse(strings.TrimRight(b.String(), "\n"))
+}
+
+func handleGet(args map[string]any) *Response {
+	name, ok := args["name"].(string)
+	if !ok || name == "" {
+		return ErrResponse(fmt.Errorf("missing or invalid 'name' argument"))
+	}
+
+	mu.RLock()
+	p, exists := processes[name]
+	mu.RUnlock()
+	if !exists {
+		return ErrResponse(fmt.Errorf("process '%s' not found", name))
+	}
+
+	// Return process info as JSON
+	info := map[string]any{
+		"name":    p.Name,
+		"port":    p.Port,
+		"command": p.Command,
+		"dir":     p.Dir,
+	}
+
+	data, err := json.Marshal(info)
+	if err != nil {
+		return ErrResponse(fmt.Errorf("failed to marshal process info: %w", err))
+	}
+
+	return OkResponse(string(data))
 }

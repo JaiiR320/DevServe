@@ -14,12 +14,13 @@ import (
 )
 
 type Process struct {
-	Name   string
-	Cmd    *exec.Cmd
-	Port   int
-	Dir    string
-	Stdout *os.File
-	Stderr *os.File
+	Name    string
+	Cmd     *exec.Cmd
+	Port    int
+	Dir     string
+	Command string
+	Stdout  *os.File
+	Stderr  *os.File
 
 	mu            sync.Mutex
 	started       bool
@@ -27,7 +28,7 @@ type Process struct {
 	processKilled bool
 }
 
-func CreateProcess(name string, port int, dir string) (*Process, error) {
+func CreateProcess(name string, port int, dir string, command string) (*Process, error) {
 	logDir := filepath.Join(dir, config.ProcessLogDir)
 	if err := os.MkdirAll(logDir, config.DirPermissions); err != nil {
 		return nil, fmt.Errorf("failed to create log directory: %w", err)
@@ -43,11 +44,12 @@ func CreateProcess(name string, port int, dir string) (*Process, error) {
 	}
 
 	return &Process{
-		Name:   name,
-		Port:   port,
-		Dir:    dir,
-		Stdout: outFile,
-		Stderr: errFile,
+		Name:    name,
+		Port:    port,
+		Dir:     dir,
+		Command: command,
+		Stdout:  outFile,
+		Stderr:  errFile,
 	}, nil
 }
 
