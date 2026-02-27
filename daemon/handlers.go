@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"devserve/cli"
+	"devserve/config"
 	"devserve/process"
 	"devserve/tunnel"
 	"devserve/util"
@@ -195,8 +196,8 @@ func handleLogs(args map[string]any) *Response {
 		}
 	}
 
-	stdoutPath := filepath.Join(p.Dir, util.ProcessLogDir, util.ProcessStdoutLog)
-	stderrPath := filepath.Join(p.Dir, util.ProcessLogDir, util.ProcessStderrLog)
+	stdoutPath := filepath.Join(p.Dir, config.ProcessLogDir, config.ProcessStdoutLog)
+	stderrPath := filepath.Join(p.Dir, config.ProcessLogDir, config.ProcessStderrLog)
 
 	stdoutLines, err := util.LastNLines(stdoutPath, lines)
 	if err != nil {

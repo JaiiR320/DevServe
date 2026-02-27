@@ -1,7 +1,7 @@
 package daemon
 
 import (
-	"devserve/util"
+	"devserve/config"
 	"errors"
 	"fmt"
 	"net"
@@ -11,7 +11,7 @@ import (
 var ErrDaemonNotRunning = errors.New("daemon is not running")
 
 func Send(req *Request) (*Response, error) {
-	conn, err := net.Dial("unix", util.Socket)
+	conn, err := net.Dial("unix", config.Socket)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrDaemonNotRunning, err)
 	}

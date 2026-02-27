@@ -1,7 +1,7 @@
 package process
 
 import (
-	"devserve/util"
+	"devserve/config"
 	"fmt"
 	"net"
 	"strconv"
@@ -10,7 +10,7 @@ import (
 
 func CheckPortInUse(port int) error {
 	addr := "localhost:" + strconv.Itoa(port)
-	conn, err := net.DialTimeout("tcp", addr, util.PortDialTimeout)
+	conn, err := net.DialTimeout("tcp", addr, config.PortDialTimeout)
 	if err == nil {
 		conn.Close()
 		return fmt.Errorf("port %d is already in use", port)
@@ -26,12 +26,12 @@ func WaitForPort(port int, timeout time.Duration) error {
 		case <-deadline:
 			return fmt.Errorf("port %d not ready after %s", port, timeout)
 		default:
-			conn, err := net.DialTimeout("tcp", addr, util.PortDialTimeout)
+			conn, err := net.DialTimeout("tcp", addr, config.PortDialTimeout)
 			if err == nil {
 				conn.Close()
 				return nil
 			}
-			time.Sleep(util.PortPollInterval)
+			time.Sleep(config.PortPollInterval)
 		}
 	}
 }

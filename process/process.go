@@ -1,8 +1,8 @@
 package process
 
 import (
+	"devserve/config"
 	"devserve/tunnel"
-	"devserve/util"
 	"fmt"
 	"log"
 	"os"
@@ -28,16 +28,16 @@ type Process struct {
 }
 
 func CreateProcess(name string, port int, dir string) (*Process, error) {
-	logDir := filepath.Join(dir, util.ProcessLogDir)
-	if err := os.MkdirAll(logDir, util.DirPermissions); err != nil {
+	logDir := filepath.Join(dir, config.ProcessLogDir)
+	if err := os.MkdirAll(logDir, config.DirPermissions); err != nil {
 		return nil, fmt.Errorf("failed to create log directory: %w", err)
 	}
 
-	outFile, err := os.Create(filepath.Join(logDir, util.ProcessStdoutLog))
+	outFile, err := os.Create(filepath.Join(logDir, config.ProcessStdoutLog))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create output log: %w", err)
 	}
-	errFile, err := os.Create(filepath.Join(logDir, util.ProcessStderrLog))
+	errFile, err := os.Create(filepath.Join(logDir, config.ProcessStderrLog))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create error log: %w", err)
 	}
@@ -73,7 +73,7 @@ func (p *Process) Start(command string) error {
 	p.mu.Unlock()
 
 	log.Printf("waiting for port %d...", p.Port)
-	if err := WaitForPort(p.Port, util.PortWaitTimeout); err != nil {
+	if err := WaitForPort(p.Port, config.PortWaitTimeout); err != nil {
 		syscall.Kill(-p.Cmd.Process.Pid, syscall.SIGTERM)
 		p.closeLogs()
 		return fmt.Errorf("failed to wait for port %d: %w", p.Port, err)
@@ -119,7 +119,7 @@ func (p *Process) Stop() error {
 		select {
 		case <-done:
 			log.Printf("process %s exited gracefully", p.Name)
-		case <-time.After(util.StopGracePeriod):
+		case <-time.After(config.StopGracePeriod):
 			log.Printf("process %s did not exit after SIGTERM, sending SIGKILL", p.Name)
 			if killErr := syscall.Kill(-p.Cmd.Process.Pid, syscall.SIGKILL); killErr != nil {
 				log.Printf("failed to SIGKILL process %s: %s", p.Name, killErr)

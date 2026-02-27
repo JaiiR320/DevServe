@@ -1,16 +1,16 @@
 package daemon_test
 
 import (
+	"devserve/config"
 	"devserve/daemon"
-	"devserve/util"
 	"errors"
 	"testing"
 )
 
 func TestSendDaemonNotRunning(t *testing.T) {
-	original := util.Socket
-	util.Socket = "/tmp/devserve-test-nonexistent.sock"
-	t.Cleanup(func() { util.Socket = original })
+	original := config.Socket
+	config.Socket = "/tmp/devserve-test-nonexistent.sock"
+	t.Cleanup(func() { config.Socket = original })
 
 	_, err := daemon.Send(&daemon.Request{Action: "ping"})
 	if err == nil {
