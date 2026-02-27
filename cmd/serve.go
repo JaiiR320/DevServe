@@ -14,32 +14,36 @@ var serveCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(3),
 	Short: "Serve your dev server with tailscale",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		cwd, err := os.Getwd()
-		if err != nil {
-			return fmt.Errorf("failed to get working directory: %w", err)
-		}
-		req := &internal.Request{
-			Action: "serve",
-			Args: map[string]any{
-				"name":    args[0],
-				"port":    args[1],
-				"command": args[2],
-				"cwd":     cwd,
-			},
-		}
-		var resp *internal.Response
-		internal.Spin("Starting process...", func() {
-			resp, err = sendRequest(req)
-		})
-		if err != nil {
-			return fmt.Errorf("failed to send serve request: %w", err)
-		}
-		if !resp.OK {
-			return errors.New(resp.Error)
-		}
-		fmt.Println(internal.Success(resp.Data))
-		return nil
+		return runServe(args)
 	},
+}
+
+func runServe(args []string) error {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("failed to get working directory: %w", err)
+	}
+	req := &internal.Request{
+		Action: "serve",
+		Args: map[string]any{
+			"name":    args[0],
+			"port":    args[1],
+			"command": args[2],
+			"cwd":     cwd,
+		},
+	}
+	var resp *internal.Response
+	internal.Spin("Starting process...", func() {
+		resp, err = sendRequest(req)
+	})
+	if err != nil {
+		return fmt.Errorf("failed to send serve request: %w", err)
+	}
+	if !resp.OK {
+		return errors.New(resp.Error)
+	}
+	fmt.Println(internal.Success(resp.Data))
+	return nil
 }
 
 func init() {
