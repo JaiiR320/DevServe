@@ -29,7 +29,7 @@ var serveCmd = &cobra.Command{
 		}
 		var resp *internal.Response
 		internal.Spin("Starting process...", func() {
-			resp, err = internal.Send(req)
+			resp, err = sendRequest(req)
 		})
 		if err != nil {
 			return fmt.Errorf("failed to send serve request: %w", err)
