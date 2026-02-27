@@ -158,6 +158,12 @@ func Stop() (string, error) {
 	return resp.Data, nil
 }
 
+// StopAllProcesses is exported for testing. It stops all running processes
+// with the given timeout and returns ports that failed to stop.
+func StopAllProcesses(timeout time.Duration) []string {
+	return stopAllProcesses(timeout)
+}
+
 // stopAllProcesses stops all running child processes concurrently.
 // Returns a list of port strings for processes that failed to stop within the timeout.
 func stopAllProcesses(timeout time.Duration) []string {

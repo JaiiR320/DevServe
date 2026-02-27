@@ -163,12 +163,12 @@ Integration tests exercise the full Unix socket communication path. These are he
 
 ### Tasks
 
-- [ ] **7.1** Test `Send` returns `ErrDaemonNotRunning` when no socket exists — call `Send()` with a non-existent socket path, assert error wraps `ErrDaemonNotRunning`
-- [ ] **7.2** Test `handleConn` dispatches `ping` action — set up a Unix socket listener, send a ping request through it, assert `"pong"` response
-- [ ] **7.3** Test `handleConn` with unknown action — send a request with action `"bogus"`, assert error response contains `"unknown action"`
-- [ ] **7.4** Test `handleConn` with malformed request — send garbage bytes, assert error response
-- [ ] **7.5** Test `handleConn` dispatches `shutdown` — send shutdown request, assert response indicates success and stop channel is signaled
-- [ ] **7.6** Test `stopAllProcesses` with empty map — assert returns nil (no failures)
+- [x] **7.1** Test `Send` returns `ErrDaemonNotRunning` when no socket exists — call `Send()` with a non-existent socket path, assert error wraps `ErrDaemonNotRunning`
+- [x] **7.2** Test `handleConn` dispatches `ping` action — set up a Unix socket listener, send a ping request through it, assert `"pong"` response
+- [x] **7.3** Test `handleConn` with unknown action — send a request with action `"bogus"`, assert error response contains `"unknown action"`
+- [x] **7.4** Test `handleConn` with malformed request — send garbage bytes, assert error response
+- [x] **7.5** Test `handleConn` dispatches `shutdown` — send shutdown request, assert response indicates success and stop channel is signaled
+- [x] **7.6** Test `stopAllProcesses` with empty map — assert returns nil (no failures)
 - [ ] **7.7** Test full daemon foreground lifecycle (optional/advanced) — start `startForeground()` in a goroutine with a test socket path, send ping, send shutdown, assert clean exit
 
 ---
