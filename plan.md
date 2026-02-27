@@ -114,14 +114,14 @@ Formatting functions are pure (string in, string out). Tests validate structure 
 
 ### Tasks
 
-- [ ] **5.1** Refactor: extract Tailscale `serve --https ... --bg` call in `Start()` into an injectable function (e.g. `TailscaleServe func(port int) error` field on `Process`, or a package-level `var RunTailscaleServe`)
-- [ ] **5.2** Refactor: extract Tailscale `serve --https ... off` call in `Stop()` into an injectable function (e.g. `TailscaleStop func(port int) error` field on `Process`, or pair with above)
-- [ ] **5.3** Test `CreateProcess` — use `t.TempDir()`, assert `.devserve/` directory created, assert `out.log` and `err.log` files exist
-- [ ] **5.4** Test `CreateProcess` with invalid directory — assert error returned with `"failed to create log directory"` message
-- [ ] **5.5** Test `Start` with a simple command — use a command like `python3 -m http.server <port>` or `nc -l <port>`, inject no-op Tailscale func, assert process is running and port becomes ready
-- [ ] **5.6** Test `Stop` after `Start` — start a process, stop it, assert process exited and logs are closed
-- [ ] **5.7** Test `Stop` idempotency — call `Stop()` twice, assert second call returns `"already stopped"` error
-- [ ] **5.8** Test `Stop` before `Start` — call `Stop()` on a fresh process, assert `"has not been started"` error
+- [x] **5.1** Refactor: extract Tailscale `serve --https ... --bg` call in `Start()` into an injectable function (e.g. `TailscaleServe func(port int) error` field on `Process`, or a package-level `var RunTailscaleServe`)
+- [x] **5.2** Refactor: extract Tailscale `serve --https ... off` call in `Stop()` into an injectable function (e.g. `TailscaleStop func(port int) error` field on `Process`, or pair with above)
+- [x] **5.3** Test `CreateProcess` — use `t.TempDir()`, assert `.devserve/` directory created, assert `out.log` and `err.log` files exist
+- [x] **5.4** Test `CreateProcess` with invalid directory — assert error returned with `"failed to create log directory"` message
+- [x] **5.5** Test `Start` with a simple command — use a command like `python3 -m http.server <port>` or `nc -l <port>`, inject no-op Tailscale func, assert process is running and port becomes ready
+- [x] **5.6** Test `Stop` after `Start` — start a process, stop it, assert process exited and logs are closed
+- [x] **5.7** Test `Stop` idempotency — call `Stop()` twice, assert second call returns `"already stopped"` error
+- [x] **5.8** Test `Stop` before `Start` — call `Stop()` on a fresh process, assert `"has not been started"` error
 
 ---
 

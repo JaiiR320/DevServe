@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"sync"
 	"syscall"
 	"time"
@@ -78,10 +77,7 @@ func (p *Process) Start(command string) error {
 		return fmt.Errorf("failed to wait for port %d: %w", p.Port, err)
 	}
 
-	portStr := strconv.Itoa(p.Port)
-	cmd := exec.Command("tailscale", "serve", "--https", portStr, "--bg", "localhost:"+portStr)
-	err = cmd.Run()
-	if err != nil {
+	if err := DefaultTunnel.Serve(p.Port); err != nil {
 		sysErr := syscall.Kill(-p.Cmd.Process.Pid, syscall.SIGTERM)
 		p.closeLogs()
 		if sysErr != nil {
@@ -131,10 +127,7 @@ func (p *Process) Stop() error {
 
 	p.closeLogs()
 
-	portStr := strconv.Itoa(p.Port)
-	cmd := exec.Command("tailscale", "serve", "--https", portStr, "off")
-	err = cmd.Run()
-	if err != nil {
+	if err := DefaultTunnel.Stop(p.Port); err != nil {
 		return fmt.Errorf("failed to disable tailscale serve: %w", err)
 	}
 	return nil
