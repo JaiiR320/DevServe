@@ -1,15 +1,16 @@
 package internal
 
 import (
+	"devserve/util"
 	"errors"
 	"testing"
 )
 
 // Task 7.1: Test Send returns ErrDaemonNotRunning when no socket exists
 func TestSendDaemonNotRunning(t *testing.T) {
-	original := Socket
-	Socket = "/tmp/devserve-test-nonexistent.sock"
-	t.Cleanup(func() { Socket = original })
+	original := util.Socket
+	util.Socket = "/tmp/devserve-test-nonexistent.sock"
+	t.Cleanup(func() { util.Socket = original })
 
 	_, err := Send(&Request{Action: "ping"})
 	if err == nil {

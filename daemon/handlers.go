@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"devserve/internal"
+	"devserve/util"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -193,16 +194,16 @@ func handleLogs(args map[string]any) *internal.Response {
 		}
 	}
 
-	stdoutPath := filepath.Join(p.Dir, internal.ProcessLogDir, internal.ProcessStdoutLog)
-	stderrPath := filepath.Join(p.Dir, internal.ProcessLogDir, internal.ProcessStderrLog)
+	stdoutPath := filepath.Join(p.Dir, util.ProcessLogDir, util.ProcessStdoutLog)
+	stderrPath := filepath.Join(p.Dir, util.ProcessLogDir, util.ProcessStderrLog)
 
-	stdoutLines, err := internal.LastNLines(stdoutPath, lines)
+	stdoutLines, err := util.LastNLines(stdoutPath, lines)
 	if err != nil {
 		log.Printf("failed to read stdout log: %s", err)
 		return internal.ErrResponse(fmt.Errorf("failed to read stdout log: %w", err))
 	}
 
-	stderrLines, err := internal.LastNLines(stderrPath, lines)
+	stderrLines, err := util.LastNLines(stderrPath, lines)
 	if err != nil {
 		log.Printf("failed to read stderr log: %s", err)
 		return internal.ErrResponse(fmt.Errorf("failed to read stderr log: %w", err))

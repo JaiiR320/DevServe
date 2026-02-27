@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"devserve/util"
 	"fmt"
 	"os"
 	"os/exec"
@@ -53,7 +54,7 @@ func TestCreateProcess(t *testing.T) {
 	defer p.Stdout.Close()
 	defer p.Stderr.Close()
 
-	logDir := filepath.Join(dir, ProcessLogDir)
+	logDir := filepath.Join(dir, util.ProcessLogDir)
 	info, err := os.Stat(logDir)
 	if err != nil {
 		t.Fatalf("expected log directory %q to exist: %v", logDir, err)
@@ -62,7 +63,7 @@ func TestCreateProcess(t *testing.T) {
 		t.Fatalf("expected %q to be a directory", logDir)
 	}
 
-	for _, name := range []string{ProcessStdoutLog, ProcessStderrLog} {
+	for _, name := range []string{util.ProcessStdoutLog, util.ProcessStderrLog} {
 		path := filepath.Join(logDir, name)
 		if _, err := os.Stat(path); err != nil {
 			t.Errorf("expected log file %q to exist: %v", path, err)

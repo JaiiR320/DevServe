@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"devserve/util"
 	"errors"
 	"fmt"
 	"net"
@@ -11,7 +12,7 @@ var ErrDaemonNotRunning = errors.New("daemon is not running")
 
 // Send a request to the daemon and return the response
 func Send(req *Request) (*Response, error) {
-	conn, err := net.Dial("unix", Socket)
+	conn, err := net.Dial("unix", util.Socket)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrDaemonNotRunning, err)
 	}

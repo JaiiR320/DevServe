@@ -3,6 +3,7 @@ package cmd
 import (
 	"devserve/daemon"
 	"devserve/internal"
+	"devserve/util"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -53,9 +54,9 @@ var daemonCmdLogs = &cobra.Command{
 	Short: "Show daemon logs",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		lines, _ := cmd.Flags().GetInt("lines")
-		path := filepath.Join(internal.DaemonDir, internal.DaemonLogFile)
+		path := filepath.Join(util.DaemonDir, util.DaemonLogFile)
 
-		logLines, err := internal.LastNLines(path, lines)
+		logLines, err := util.LastNLines(path, lines)
 		if err != nil {
 			return fmt.Errorf("failed to read daemon log: %w", err)
 		}

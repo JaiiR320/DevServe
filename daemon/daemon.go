@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"devserve/internal"
+	"devserve/util"
 	"errors"
 	"fmt"
 	"log"
@@ -30,20 +31,20 @@ func Start(background bool) error {
 
 func startInBackground() error {
 	// Create log directory
-	err := os.MkdirAll(internal.DaemonDir, internal.DirPermissions)
+	err := os.MkdirAll(util.DaemonDir, util.DirPermissions)
 	if err != nil {
 		return fmt.Errorf("failed to create log directory: %w", err)
 	}
 
 	// Create log file (truncate if exists)
-	logFile, err := os.Create(filepath.Join(internal.DaemonDir, internal.DaemonLogFile))
+	logFile, err := os.Create(filepath.Join(util.DaemonDir, util.DaemonLogFile))
 	if err != nil {
 		return fmt.Errorf("failed to open log file: %w", err)
 	}
 	defer logFile.Close()
 
 	// Check if daemon already running
-	conn, err := net.Dial("unix", internal.Socket)
+	conn, err := net.Dial("unix", util.Socket)
 	if err == nil {
 		conn.Close()
 		return errors.New("daemon is already running")
@@ -72,7 +73,7 @@ func startInBackground() error {
 		}
 
 		// Wait a moment and verify daemon started with ping
-		time.Sleep(internal.DaemonStartDelay)
+		time.Sleep(util.DaemonStartDelay)
 		pingReq := &internal.Request{Action: "ping"}
 		resp, err := internal.Send(pingReq)
 		if err != nil {
@@ -88,21 +89,21 @@ func startInBackground() error {
 		return startErr
 	}
 
-	fmt.Println(internal.Success("daemon started") + " " + internal.Info("logs: "+filepath.Join(internal.DaemonDir, internal.DaemonLogFile)))
+	fmt.Println(internal.Success("daemon started") + " " + internal.Info("logs: "+filepath.Join(util.DaemonDir, util.DaemonLogFile)))
 	return nil
 }
 
 func startForeground() error {
 	internal.InitLogger()
 	processes = make(map[string]*internal.Process)
-	conn, err := net.Dial("unix", internal.Socket)
+	conn, err := net.Dial("unix", util.Socket)
 	if err == nil {
 		conn.Close()
 		return errors.New("daemon is already running")
 	}
-	os.Remove(internal.Socket)
+	os.Remove(util.Socket)
 
-	listener, err := net.Listen("unix", internal.Socket)
+	listener, err := net.Listen("unix", util.Socket)
 	if err != nil {
 		return fmt.Errorf("failed to listen on socket: %w", err)
 	}
@@ -137,12 +138,12 @@ func startForeground() error {
 	}
 
 	// Stop all running child processes before exiting
-	failed := stopAllProcesses(internal.ShutdownTimeout)
+	failed := stopAllProcesses(util.ShutdownTimeout)
 	if len(failed) > 0 {
 		log.Printf("failed to stop processes on ports: %s", strings.Join(failed, ", "))
 	}
 
-	os.Remove(internal.Socket)
+	os.Remove(util.Socket)
 	return nil
 }
 
@@ -251,7 +252,7 @@ func handleConn(conn net.Conn, stop chan struct{}) {
 
 	if req.Action == "shutdown" {
 		log.Println("shutdown requested, stopping all processes")
-		failed := stopAllProcesses(internal.ShutdownTimeout)
+		failed := stopAllProcesses(util.ShutdownTimeout)
 		if len(failed) > 0 {
 			msg := fmt.Sprintf("daemon stopping, failed to stop ports: %s", strings.Join(failed, ", "))
 			internal.SendResponse(conn, internal.OkResponse(msg))

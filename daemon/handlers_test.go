@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"devserve/internal"
+	"devserve/util"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -324,18 +325,18 @@ func TestHandleLogsValid(t *testing.T) {
 	resetState(t)
 
 	dir := t.TempDir()
-	logDir := filepath.Join(dir, internal.ProcessLogDir)
-	if err := os.MkdirAll(logDir, internal.DirPermissions); err != nil {
+	logDir := filepath.Join(dir, util.ProcessLogDir)
+	if err := os.MkdirAll(logDir, util.DirPermissions); err != nil {
 		t.Fatalf("failed to create log dir: %v", err)
 	}
 
 	stdoutContent := "line one\nline two\nline three\n"
 	stderrContent := "error alpha\nerror beta\n"
 
-	if err := os.WriteFile(filepath.Join(logDir, internal.ProcessStdoutLog), []byte(stdoutContent), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(logDir, util.ProcessStdoutLog), []byte(stdoutContent), 0644); err != nil {
 		t.Fatalf("failed to write stdout log: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(logDir, internal.ProcessStderrLog), []byte(stderrContent), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(logDir, util.ProcessStderrLog), []byte(stderrContent), 0644); err != nil {
 		t.Fatalf("failed to write stderr log: %v", err)
 	}
 
