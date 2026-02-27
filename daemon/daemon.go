@@ -250,6 +250,8 @@ func handleConn(conn net.Conn, stop chan struct{}) {
 		resp = handleStop(req.Args)
 	case "list":
 		resp = handleList(req.Args)
+	case "logs":
+		resp = handleLogs(req.Args)
 	default:
 		resp = internal.ErrResponse(fmt.Errorf("unknown action '%s'", req.Action))
 	}

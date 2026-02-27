@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"path/filepath"
 	"strconv"
+	"strings"
 )
 
 func handlePing(args map[string]any) *internal.Response {
@@ -120,4 +122,60 @@ func handleList(args map[string]any) *internal.Response {
 	}
 
 	return internal.OkResponse(string(data))
+}
+
+func handleLogs(args map[string]any) *internal.Response {
+	name, ok := args["name"].(string)
+	if !ok || name == "" {
+		return internal.ErrResponse(fmt.Errorf("missing or invalid 'name' argument"))
+	}
+
+	mu.RLock()
+	p, exists := processes[name]
+	mu.RUnlock()
+	if !exists {
+		return internal.ErrResponse(fmt.Errorf("process '%s' not found", name))
+	}
+
+	lines := 50
+	if linesStr, ok := args["lines"].(string); ok {
+		if n, err := strconv.Atoi(linesStr); err == nil && n > 0 {
+			lines = n
+		}
+	}
+
+	stdoutPath := filepath.Join(p.Dir, internal.ProcessLogDir, internal.ProcessStdoutLog)
+	stderrPath := filepath.Join(p.Dir, internal.ProcessLogDir, internal.ProcessStderrLog)
+
+	stdoutLines, err := internal.LastNLines(stdoutPath, lines)
+	if err != nil {
+		log.Printf("failed to read stdout log: %s", err)
+		return internal.ErrResponse(fmt.Errorf("failed to read stdout log: %w", err))
+	}
+
+	stderrLines, err := internal.LastNLines(stderrPath, lines)
+	if err != nil {
+		log.Printf("failed to read stderr log: %s", err)
+		return internal.ErrResponse(fmt.Errorf("failed to read stderr log: %w", err))
+	}
+
+	headerStyle := internal.Cyan
+	stderrStyle := internal.Red
+
+	var b strings.Builder
+	b.WriteString(headerStyle.Render("─── stdout ───"))
+	b.WriteString("\n")
+	for _, line := range stdoutLines {
+		b.WriteString(line)
+		b.WriteString("\n")
+	}
+	b.WriteString("\n")
+	b.WriteString(headerStyle.Render("─── stderr ───"))
+	b.WriteString("\n")
+	for _, line := range stderrLines {
+		b.WriteString(stderrStyle.Render(line))
+		b.WriteString("\n")
+	}
+
+	return internal.OkResponse(strings.TrimRight(b.String(), "\n"))
 }

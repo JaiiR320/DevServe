@@ -4,6 +4,8 @@ import (
 	"devserve/daemon"
 	"devserve/internal"
 	"fmt"
+	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -45,8 +47,39 @@ var daemonCmdStop = &cobra.Command{
 	},
 }
 
+var daemonCmdLogs = &cobra.Command{
+	Use:   "logs",
+	Args:  cobra.NoArgs,
+	Short: "Show daemon logs",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		lines, _ := cmd.Flags().GetInt("lines")
+		path := filepath.Join(internal.DaemonDir, internal.DaemonLogFile)
+
+		logLines, err := internal.LastNLines(path, lines)
+		if err != nil {
+			return fmt.Errorf("failed to read daemon log: %w", err)
+		}
+
+		if len(logLines) == 0 {
+			fmt.Println(internal.Info("no daemon logs found"))
+			return nil
+		}
+
+		var b strings.Builder
+		b.WriteString(internal.Cyan.Render("─── daemon ───"))
+		b.WriteString("\n")
+		for _, line := range logLines {
+			b.WriteString(line)
+			b.WriteString("\n")
+		}
+		fmt.Print(b.String())
+		return nil
+	},
+}
+
 func init() {
 	daemonCmdStart.Flags().BoolVarP(&foreground, "foreground", "f", false, "Run daemon in foreground")
-	daemonCmd.AddCommand(daemonCmdStart, daemonCmdStop)
+	daemonCmdLogs.Flags().IntP("lines", "n", 50, "number of lines to show")
+	daemonCmd.AddCommand(daemonCmdStart, daemonCmdStop, daemonCmdLogs)
 	rootCmd.AddCommand(daemonCmd)
 }
