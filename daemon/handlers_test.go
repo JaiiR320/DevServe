@@ -2,10 +2,11 @@ package daemon
 
 import (
 	"devserve/config"
+	"devserve/internal/testutil"
 	"devserve/process"
+	"devserve/tunnel"
 	"encoding/json"
 	"fmt"
-	"net"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -13,22 +14,16 @@ import (
 	"testing"
 )
 
-// occupiedPort starts a TCP listener and returns its port. The listener is
-// closed when the test finishes.
-func occupiedPort(t *testing.T) int {
-	t.Helper()
-	l, err := net.Listen("tcp", "localhost:0")
-	if err != nil {
-		t.Fatalf("failed to get occupied port: %v", err)
-	}
-	t.Cleanup(func() { l.Close() })
-	return l.Addr().(*net.TCPAddr).Port
-}
-
 func resetState(t *testing.T) {
 	t.Helper()
-	ResetProcesses()
-	t.Cleanup(func() { ResetProcesses() })
+	mu.Lock()
+	processes = make(map[string]*process.Process)
+	mu.Unlock()
+	t.Cleanup(func() {
+		mu.Lock()
+		processes = make(map[string]*process.Process)
+		mu.Unlock()
+	})
 }
 
 func TestHandlePing(t *testing.T) {
@@ -71,14 +66,7 @@ func TestHandleServeMissingPort(t *testing.T) {
 func TestHandleServeMissingCommand(t *testing.T) {
 	resetState(t)
 
-	// Use a port that passes CheckPortInUse so we reach the command validation.
-	// Get a free port by binding then immediately closing.
-	l, err := net.Listen("tcp", "localhost:0")
-	if err != nil {
-		t.Fatalf("failed to get free port: %v", err)
-	}
-	port := l.Addr().(*net.TCPAddr).Port
-	l.Close()
+	port := testutil.FreePort(t)
 
 	resp := handleServe(map[string]any{"name": "app", "port": float64(port)})
 
@@ -93,7 +81,9 @@ func TestHandleServeMissingCommand(t *testing.T) {
 func TestHandleServeDuplicateName(t *testing.T) {
 	resetState(t)
 
-	SetProcess("myapp", &process.Process{Name: "myapp", Port: 3000})
+	mu.Lock()
+	processes["myapp"] = &process.Process{Name: "myapp", Port: 3000}
+	mu.Unlock()
 
 	resp := handleServe(map[string]any{
 		"name":    "myapp",
@@ -114,7 +104,7 @@ func TestHandleServePortTypes(t *testing.T) {
 
 	// Use an occupied port so handleServe fails fast at CheckPortInUse,
 	// proving the port type was parsed successfully (no "invalid port type" error).
-	port := occupiedPort(t)
+	port := testutil.OccupiedPort(t)
 
 	t.Run("float64 port passes validation", func(t *testing.T) {
 		resp := handleServe(map[string]any{
@@ -192,11 +182,11 @@ func TestHandleStopNotFound(t *testing.T) {
 func TestHandleListEmpty(t *testing.T) {
 	resetState(t)
 
-	origRunner := tsRunner
-	tsRunner = func() ([]byte, error) {
+	origRunner := tunnel.DefaultRunner
+	tunnel.SetRunner(func() ([]byte, error) {
 		return []byte(`{"TailscaleIPs":["100.1.2.3"],"Self":{"DNSName":"host.example.ts.net."}}`), nil
-	}
-	t.Cleanup(func() { tsRunner = origRunner })
+	})
+	t.Cleanup(func() { tunnel.SetRunner(origRunner) })
 
 	resp := handleList(nil)
 
@@ -222,14 +212,16 @@ func TestHandleListEmpty(t *testing.T) {
 func TestHandleListPopulated(t *testing.T) {
 	resetState(t)
 
-	origRunner := tsRunner
-	tsRunner = func() ([]byte, error) {
+	origRunner := tunnel.DefaultRunner
+	tunnel.SetRunner(func() ([]byte, error) {
 		return []byte(`{"TailscaleIPs":["100.1.2.3"],"Self":{"DNSName":"host.example.ts.net."}}`), nil
-	}
-	t.Cleanup(func() { tsRunner = origRunner })
+	})
+	t.Cleanup(func() { tunnel.SetRunner(origRunner) })
 
-	SetProcess("web", &process.Process{Name: "web", Port: 3000})
-	SetProcess("api", &process.Process{Name: "api", Port: 4000})
+	mu.Lock()
+	processes["web"] = &process.Process{Name: "web", Port: 3000}
+	processes["api"] = &process.Process{Name: "api", Port: 4000}
+	mu.Unlock()
 
 	resp := handleList(nil)
 
@@ -264,11 +256,11 @@ func TestHandleListPopulated(t *testing.T) {
 func TestHandleListTailscaleUnavailable(t *testing.T) {
 	resetState(t)
 
-	origRunner := tsRunner
-	tsRunner = func() ([]byte, error) {
+	origRunner := tunnel.DefaultRunner
+	tunnel.SetRunner(func() ([]byte, error) {
 		return nil, fmt.Errorf("tailscale not running")
-	}
-	t.Cleanup(func() { tsRunner = origRunner })
+	})
+	t.Cleanup(func() { tunnel.SetRunner(origRunner) })
 
 	resp := handleList(nil)
 
@@ -325,7 +317,9 @@ func TestHandleLogsValid(t *testing.T) {
 		t.Fatalf("failed to write stderr log: %v", err)
 	}
 
-	SetProcess("myapp", &process.Process{Name: "myapp", Port: 3000, Dir: dir})
+	mu.Lock()
+	processes["myapp"] = &process.Process{Name: "myapp", Port: 3000, Dir: dir}
+	mu.Unlock()
 
 	resp := handleLogs(map[string]any{"name": "myapp"})
 
