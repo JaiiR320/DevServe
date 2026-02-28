@@ -107,10 +107,6 @@ func handleStop(args map[string]any) *Response {
 	return OkResponse(fmt.Sprintf("process '%s' stopped", name))
 }
 
-// tsRunner is the function used to fetch tailscale status JSON.
-// It can be overridden in tests.
-var tsRunner tunnel.CommandRunner = tunnel.DefaultTailscaleRunner
-
 type listEntry struct {
 	Name string `json:"name"`
 	Port int    `json:"port"`
@@ -123,7 +119,7 @@ type listResponse struct {
 }
 
 func handleList(args map[string]any) *Response {
-	info, err := tunnel.GetTailscaleInfo(tsRunner)
+	info, err := tunnel.GetTailscaleInfo(tunnel.DefaultRunner)
 	if err != nil {
 		return ErrResponse(err)
 	}
@@ -147,33 +143,6 @@ func handleList(args map[string]any) *Response {
 	}
 
 	return OkResponse(string(data))
-}
-
-// ResetProcesses clears the processes map for test isolation.
-func ResetProcesses() {
-	mu.Lock()
-	processes = make(map[string]*process.Process)
-	mu.Unlock()
-}
-
-// SetProcess adds a process to the map (for test setup).
-func SetProcess(name string, p *process.Process) {
-	mu.Lock()
-	if processes == nil {
-		processes = make(map[string]*process.Process)
-	}
-	processes[name] = p
-	mu.Unlock()
-}
-
-func GetProcesses() map[string]*process.Process {
-	mu.RLock()
-	defer mu.RUnlock()
-	cp := make(map[string]*process.Process, len(processes))
-	for k, v := range processes {
-		cp[k] = v
-	}
-	return cp
 }
 
 func handleLogs(args map[string]any) *Response {

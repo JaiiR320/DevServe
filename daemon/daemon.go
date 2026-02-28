@@ -90,7 +90,8 @@ func startInBackground() error {
 }
 
 func startForeground() error {
-	cli.InitLogger()
+	log.SetOutput(os.Stdout)
+	log.SetFlags(log.Ldate | log.Ltime)
 	processes = make(map[string]*process.Process)
 	conn, err := net.Dial("unix", config.Socket)
 	if err == nil {
@@ -153,11 +154,6 @@ func Stop() (string, error) {
 		return "", fmt.Errorf("failed to shutdown daemon: %s", resp.Error)
 	}
 	return resp.Data, nil
-}
-
-// StopAllProcesses is exported for testing.
-func StopAllProcesses(timeout time.Duration) []string {
-	return stopAllProcesses(timeout)
 }
 
 // stopAllProcesses stops all running child processes with retry logic.
