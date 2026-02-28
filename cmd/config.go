@@ -70,25 +70,6 @@ func init() {
 	rootCmd.AddCommand(configCmd)
 }
 
-func runConfigList(configPath string) (string, error) {
-	configs, err := config.LoadConfigs(configPath)
-	if err != nil {
-		return "", fmt.Errorf("failed to load configs: %w", err)
-	}
-
-	if len(configs) == 0 {
-		return "No saved configurations", nil
-	}
-
-	// Format as JSON for rendering
-	data, err := json.MarshalIndent(configs, "", "  ")
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal configs: %w", err)
-	}
-
-	return string(data), nil
-}
-
 func runConfigSave(name string) error {
 	// Query daemon for process info
 	req := &daemon.Request{
