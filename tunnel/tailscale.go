@@ -21,6 +21,14 @@ func DefaultTailscaleRunner() ([]byte, error) {
 	return exec.Command("tailscale", "status", "--json").Output()
 }
 
+// DefaultRunner is the package-level command runner for fetching tailscale status.
+var DefaultRunner CommandRunner = DefaultTailscaleRunner
+
+// SetRunner replaces the default command runner for tailscale status.
+func SetRunner(r CommandRunner) {
+	DefaultRunner = r
+}
+
 // GetTailscaleInfo parses tailscale status JSON using the provided runner.
 func GetTailscaleInfo(runner CommandRunner) (*TailscaleInfo, error) {
 	data, err := runner()

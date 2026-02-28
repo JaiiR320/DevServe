@@ -26,3 +26,8 @@ func (TailscaleTunnel) Stop(port int) error {
 
 // DefaultTunnel is the package-level tunnel used by Process.
 var DefaultTunnel Tunnel = TailscaleTunnel{}
+
+// SetTunnel replaces the default tunnel implementation.
+func SetTunnel(t Tunnel) {
+	DefaultTunnel = t
+}
