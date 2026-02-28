@@ -2,20 +2,15 @@ package process_test
 
 import (
 	"devserve/config"
+	"devserve/internal/testutil"
 	"devserve/process"
 	"devserve/tunnel"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 )
-
-type noopTunnel struct{}
-
-func (noopTunnel) Serve(port int) error { return nil }
-func (noopTunnel) Stop(port int) error  { return nil }
 
 // failOnceStopTunnel fails the first Stop() call and succeeds on subsequent calls.
 // Serve() always succeeds. stopCalls tracks total Stop() invocations.
@@ -35,15 +30,8 @@ func (f *failOnceStopTunnel) Stop(port int) error {
 func swapTunnel(t *testing.T) {
 	t.Helper()
 	original := tunnel.DefaultTunnel
-	tunnel.DefaultTunnel = noopTunnel{}
-	t.Cleanup(func() { tunnel.DefaultTunnel = original })
-}
-
-func requireNC(t *testing.T) {
-	t.Helper()
-	if _, err := exec.LookPath("nc"); err != nil {
-		t.Skip("nc not available")
-	}
+	tunnel.SetTunnel(testutil.NoopTunnel{})
+	t.Cleanup(func() { tunnel.SetTunnel(original) })
 }
 
 func TestCreateProcess(t *testing.T) {
@@ -83,10 +71,10 @@ func TestCreateProcessInvalidDir(t *testing.T) {
 }
 
 func TestProcessStart(t *testing.T) {
-	requireNC(t)
+	testutil.RequireNC(t)
 	swapTunnel(t)
 
-	port := freePort(t)
+	port := testutil.FreePort(t)
 	dir := t.TempDir()
 	p, err := process.CreateProcess("testapp", port, dir, "echo test")
 	if err != nil {
@@ -108,10 +96,10 @@ func TestProcessStart(t *testing.T) {
 }
 
 func TestProcessStopAfterStart(t *testing.T) {
-	requireNC(t)
+	testutil.RequireNC(t)
 	swapTunnel(t)
 
-	port := freePort(t)
+	port := testutil.FreePort(t)
 	dir := t.TempDir()
 	p, err := process.CreateProcess("testapp", port, dir, "echo test")
 	if err != nil {
@@ -138,10 +126,10 @@ func TestProcessStopAfterStart(t *testing.T) {
 }
 
 func TestProcessStopIdempotent(t *testing.T) {
-	requireNC(t)
+	testutil.RequireNC(t)
 	swapTunnel(t)
 
-	port := freePort(t)
+	port := testutil.FreePort(t)
 	dir := t.TempDir()
 	p, err := process.CreateProcess("testapp", port, dir, "echo test")
 	if err != nil {
@@ -187,14 +175,14 @@ func TestProcessStopBeforeStart(t *testing.T) {
 // Bug #16: When tailscale serve stop fails, a retry of Stop() should attempt
 // to close the tailscale serve again rather than returning "already stopped".
 func TestProcessStopCanRetryAfterTailscaleFailure(t *testing.T) {
-	requireNC(t)
+	testutil.RequireNC(t)
 
-	mock_tunnel := &failOnceStopTunnel{}
+	mockTunnel := &failOnceStopTunnel{}
 	original := tunnel.DefaultTunnel
-	tunnel.DefaultTunnel = mock_tunnel
-	t.Cleanup(func() { tunnel.DefaultTunnel = original })
+	tunnel.SetTunnel(mockTunnel)
+	t.Cleanup(func() { tunnel.SetTunnel(original) })
 
-	port := freePort(t)
+	port := testutil.FreePort(t)
 	dir := t.TempDir()
 	p, err := process.CreateProcess("testapp", port, dir, "echo test")
 	if err != nil {
@@ -221,7 +209,7 @@ func TestProcessStopCanRetryAfterTailscaleFailure(t *testing.T) {
 		t.Fatalf("expected second Stop to succeed after tailscale retry, got %v", err)
 	}
 
-	if mock_tunnel.stopCalls != 2 {
-		t.Errorf("expected tunnel Stop to be called 2 times, got %d", mock_tunnel.stopCalls)
+	if mockTunnel.stopCalls != 2 {
+		t.Errorf("expected tunnel Stop to be called 2 times, got %d", mockTunnel.stopCalls)
 	}
 }

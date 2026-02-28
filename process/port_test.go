@@ -1,6 +1,7 @@
 package process_test
 
 import (
+	"devserve/internal/testutil"
 	"devserve/process"
 	"fmt"
 	"net"
@@ -9,20 +10,8 @@ import (
 	"time"
 )
 
-// freePort starts a TCP listener on :0 to get a free port, then closes it.
-func freePort(t *testing.T) int {
-	t.Helper()
-	l, err := net.Listen("tcp", "localhost:0")
-	if err != nil {
-		t.Fatalf("failed to get free port: %v", err)
-	}
-	port := l.Addr().(*net.TCPAddr).Port
-	l.Close()
-	return port
-}
-
 func TestCheckPortInUseFree(t *testing.T) {
-	port := freePort(t)
+	port := testutil.FreePort(t)
 
 	err := process.CheckPortInUse(port)
 	if err != nil {
@@ -31,14 +20,9 @@ func TestCheckPortInUseFree(t *testing.T) {
 }
 
 func TestCheckPortInUseOccupied(t *testing.T) {
-	l, err := net.Listen("tcp", "localhost:0")
-	if err != nil {
-		t.Fatalf("failed to start listener: %v", err)
-	}
-	defer l.Close()
+	port := testutil.OccupiedPort(t)
 
-	port := l.Addr().(*net.TCPAddr).Port
-	err = process.CheckPortInUse(port)
+	err := process.CheckPortInUse(port)
 	if err == nil {
 		t.Fatalf("expected error for occupied port %d, got nil", port)
 	}
@@ -48,15 +32,10 @@ func TestCheckPortInUseOccupied(t *testing.T) {
 }
 
 func TestWaitForPortImmediate(t *testing.T) {
-	l, err := net.Listen("tcp", "localhost:0")
-	if err != nil {
-		t.Fatalf("failed to start listener: %v", err)
-	}
-	defer l.Close()
+	port := testutil.OccupiedPort(t)
 
-	port := l.Addr().(*net.TCPAddr).Port
 	start := time.Now()
-	err = process.WaitForPort(port, 2*time.Second)
+	err := process.WaitForPort(port, 2*time.Second)
 	elapsed := time.Since(start)
 
 	if err != nil {
@@ -68,7 +47,7 @@ func TestWaitForPortImmediate(t *testing.T) {
 }
 
 func TestWaitForPortDelayed(t *testing.T) {
-	port := freePort(t)
+	port := testutil.FreePort(t)
 
 	go func() {
 		time.Sleep(200 * time.Millisecond)
@@ -93,7 +72,7 @@ func TestWaitForPortDelayed(t *testing.T) {
 }
 
 func TestWaitForPortTimeout(t *testing.T) {
-	port := freePort(t)
+	port := testutil.FreePort(t)
 
 	start := time.Now()
 	err := process.WaitForPort(port, 300*time.Millisecond)
