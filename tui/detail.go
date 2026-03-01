@@ -14,80 +14,58 @@ var (
 	urlStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("6"))
 )
 
-// renderRightPane renders the right pane based on the active tab.
+// renderRightPane renders the right pane based on the selected item.
 func renderRightPane(m model) string {
-	if m.tab == 0 {
-		return renderProcessDetail(m)
-	}
-	return renderConfigDetail(m)
-}
-
-// renderProcessDetail renders metadata for the selected running process.
-func renderProcessDetail(m model) string {
-	if len(m.processes) == 0 {
+	if len(m.items) == 0 {
 		return ""
 	}
 
-	p := m.processes[m.cursor]
+	item := m.items[m.cursor]
 	var b strings.Builder
 
-	// Process name header
-	b.WriteString("\n  " + cli.Bold.Render(p.Name) + "\n\n")
+	// Name header
+	b.WriteString("  " + cli.Bold.Render(item.Name) + "\n\n")
 
 	// Key-value pairs
 	rows := []struct {
 		label string
 		value string
 	}{
-		{"Port", fmt.Sprintf("%d", p.Port)},
-		{"Command", p.Command},
-		{"Directory", p.Dir},
-		{"Local", p.LocalURL},
+		{"Port", fmt.Sprintf("%d", item.Port)},
+		{"Command", item.Command},
+		{"Directory", item.Dir},
 	}
-	if p.IPURL != "" {
+
+	if item.Running {
 		rows = append(rows, struct {
 			label string
 			value string
-		}{"IP", p.IPURL})
+		}{"Local", item.LocalURL})
+		if item.IPURL != "" {
+			rows = append(rows, struct {
+				label string
+				value string
+			}{"IP", item.IPURL})
+		}
+		if item.DNSURL != "" {
+			rows = append(rows, struct {
+				label string
+				value string
+			}{"DNS", item.DNSURL})
+		}
 	}
-	if p.DNSURL != "" {
+
+	// Add configured status
+	if item.Configured {
 		rows = append(rows, struct {
 			label string
 			value string
-		}{"DNS", p.DNSURL})
-	}
-
-	b.WriteString(renderKeyValuePairs(rows))
-	return b.String()
-}
-
-// renderConfigDetail renders metadata for the selected saved config.
-func renderConfigDetail(m model) string {
-	if len(m.configs) == 0 {
-		return ""
-	}
-
-	c := m.configs[m.configCur]
-	var b strings.Builder
-
-	// Config name header
-	b.WriteString("\n  " + cli.Bold.Render(c.Name) + "\n\n")
-
-	// Status line
-	if c.Running {
-		b.WriteString("  " + cli.Green.Render("● Running") + "\n\n")
+		}{"Config", "Saved"})
 	} else {
-		b.WriteString("  " + cli.Dim.Render("○ Stopped") + "\n\n")
-	}
-
-	// Key-value pairs
-	rows := []struct {
-		label string
-		value string
-	}{
-		{"Port", fmt.Sprintf("%d", c.Port)},
-		{"Command", c.Command},
-		{"Directory", c.Dir},
+		rows = append(rows, struct {
+			label string
+			value string
+		}{"Config", "Unsaved (press 's' to save)"})
 	}
 
 	b.WriteString(renderKeyValuePairs(rows))
@@ -111,7 +89,7 @@ func renderKeyValuePairs(rows []struct {
 	for _, r := range rows {
 		label := detailLabel.Render(fmt.Sprintf("  %-*s", labelW, r.label))
 
-		// Render URLs with cyan underline styling (no OSC 8 hyperlinks in TUI)
+		// Render URLs with cyan styling
 		value := r.value
 		if strings.HasPrefix(value, "http://") || strings.HasPrefix(value, "https://") {
 			value = urlStyle.Render(value)

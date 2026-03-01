@@ -28,9 +28,10 @@ func sendRequest(req *daemon.Request) (*daemon.Response, error) {
 	return daemon.Send(req)
 }
 
-// fetchProcesses queries the daemon for the current process list and fetches
-// detail for each process via the get RPC.
-func fetchProcesses() ([]processRow, error) {
+// fetchItems queries the daemon and config to build a unified list of processes.
+// Configured items come first, followed by ephemeral (running but not configured) items.
+func fetchItems() ([]listItem, error) {
+	// Fetch running processes from daemon
 	resp, err := sendRequest(&daemon.Request{Action: "list"})
 	if err != nil {
 		return nil, fmt.Errorf("failed to send list request: %w", err)
@@ -54,36 +55,109 @@ func fetchProcesses() ([]processRow, error) {
 		return nil, fmt.Errorf("failed to parse list response: %w", err)
 	}
 
-	rows := make([]processRow, 0, len(lr.Processes))
+	// Build map of running processes
+	runningProcs := make(map[string]processInfo, len(lr.Processes))
 	for _, e := range lr.Processes {
-		row := processRow{
+		info := processInfo{
 			Name:     e.Name,
 			Port:     e.Port,
 			LocalURL: fmt.Sprintf("http://localhost:%d", e.Port),
 		}
-
 		if lr.IP != "" {
-			row.IPURL = fmt.Sprintf("http://%s:%d", lr.IP, e.Port)
+			info.IPURL = fmt.Sprintf("http://%s:%d", lr.IP, e.Port)
 		}
 		if lr.Hostname != "" {
-			row.DNSURL = fmt.Sprintf("https://%s:%d", lr.Hostname, e.Port)
+			info.DNSURL = fmt.Sprintf("https://%s:%d", lr.Hostname, e.Port)
 		}
 
 		// Fetch detail (command, dir) via get RPC
 		detail, err := fetchDetail(e.Name)
 		if err == nil {
-			row.Command = detail.Command
-			row.Dir = detail.Dir
+			info.Command = detail.Command
+			info.Dir = detail.Dir
 		}
 
-		rows = append(rows, row)
+		runningProcs[e.Name] = info
 	}
 
-	sort.Slice(rows, func(i, j int) bool {
-		return rows[i].Port < rows[j].Port
+	// Load configs
+	configs, err := config.LoadConfigs(config.ConfigFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load configs: %w", err)
+	}
+
+	// Build unified list
+	var items []listItem
+	configuredNames := make(map[string]bool)
+
+	// First: configured items (whether running or not)
+	for _, cfg := range configs {
+		item := listItem{
+			Name:       cfg.Name,
+			Port:       cfg.Port,
+			Command:    cfg.Command,
+			Dir:        cfg.Directory,
+			Configured: true,
+		}
+
+		// Check if running
+		if proc, ok := runningProcs[cfg.Name]; ok {
+			item.Running = true
+			item.LocalURL = proc.LocalURL
+			item.IPURL = proc.IPURL
+			item.DNSURL = proc.DNSURL
+			// Update with live command/dir from running process
+			item.Command = proc.Command
+			item.Dir = proc.Dir
+		}
+
+		items = append(items, item)
+		configuredNames[cfg.Name] = true
+	}
+
+	// Sort configured items by port
+	sort.Slice(items, func(i, j int) bool {
+		return items[i].Port < items[j].Port
 	})
 
-	return rows, nil
+	// Second: ephemeral items (running but not configured)
+	var ephemeral []listItem
+	for name, proc := range runningProcs {
+		if !configuredNames[name] {
+			ephemeral = append(ephemeral, listItem{
+				Name:       proc.Name,
+				Port:       proc.Port,
+				Command:    proc.Command,
+				Dir:        proc.Dir,
+				Running:    true,
+				Configured: false,
+				LocalURL:   proc.LocalURL,
+				IPURL:      proc.IPURL,
+				DNSURL:     proc.DNSURL,
+			})
+		}
+	}
+
+	// Sort ephemeral items by port
+	sort.Slice(ephemeral, func(i, j int) bool {
+		return ephemeral[i].Port < ephemeral[j].Port
+	})
+
+	// Combine: configured first, then ephemeral
+	items = append(items, ephemeral...)
+
+	return items, nil
+}
+
+// processInfo holds temporary process data during fetch
+type processInfo struct {
+	Name     string
+	Port     int
+	Command  string
+	Dir      string
+	LocalURL string
+	IPURL    string
+	DNSURL   string
 }
 
 // processDetail holds the extra fields returned by the get RPC.
@@ -119,58 +193,6 @@ func fetchDetail(name string) (*processDetail, error) {
 	}, nil
 }
 
-// fetchConfigs loads saved configurations and cross-references with running
-// processes to set the Running flag.
-func fetchConfigs(processes []processRow) ([]configRow, error) {
-	configs, err := config.LoadConfigs(config.ConfigFile)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load configs: %w", err)
-	}
-
-	// Build a set of running process names for fast lookup
-	running := make(map[string]bool, len(processes))
-	for _, p := range processes {
-		running[p.Name] = true
-	}
-
-	rows := make([]configRow, len(configs))
-	for i, c := range configs {
-		rows[i] = configRow{
-			Name:    c.Name,
-			Port:    c.Port,
-			Command: c.Command,
-			Dir:     c.Directory,
-			Running: running[c.Name],
-		}
-	}
-
-	sort.Slice(rows, func(i, j int) bool {
-		return rows[i].Port < rows[j].Port
-	})
-
-	return rows, nil
-}
-
-// startProcess sends a serve request to the daemon to start a saved config.
-func startProcess(cfg configRow) error {
-	resp, err := sendRequest(&daemon.Request{
-		Action: "serve",
-		Args: map[string]any{
-			"name":    cfg.Name,
-			"port":    cfg.Port,
-			"command": cfg.Command,
-			"cwd":     cfg.Dir,
-		},
-	})
-	if err != nil {
-		return fmt.Errorf("failed to send serve request: %w", err)
-	}
-	if !resp.OK {
-		return errors.New(resp.Error)
-	}
-	return nil
-}
-
 // stopProcess sends a stop request to the daemon for the named process.
 func stopProcess(name string) error {
 	resp, err := sendRequest(&daemon.Request{
@@ -184,4 +206,40 @@ func stopProcess(name string) error {
 		return errors.New(resp.Error)
 	}
 	return nil
+}
+
+// startItem starts a configured process.
+func startItem(item listItem) error {
+	resp, err := sendRequest(&daemon.Request{
+		Action: "serve",
+		Args: map[string]any{
+			"name":    item.Name,
+			"port":    item.Port,
+			"command": item.Command,
+			"cwd":     item.Dir,
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to send serve request: %w", err)
+	}
+	if !resp.OK {
+		return errors.New(resp.Error)
+	}
+	return nil
+}
+
+// saveToConfig saves an ephemeral process to the config file.
+func saveToConfig(item listItem) error {
+	newConfig := config.ProcessConfig{
+		Name:      item.Name,
+		Port:      item.Port,
+		Command:   item.Command,
+		Directory: item.Dir,
+	}
+	return config.SaveConfig(config.ConfigFile, newConfig)
+}
+
+// removeFromConfig removes a process from the config file.
+func removeFromConfig(name string) error {
+	return config.DeleteConfig(config.ConfigFile, name)
 }

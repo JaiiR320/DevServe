@@ -9,12 +9,22 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+// listItem represents a unified process entry (configured or ephemeral)
+type listItem struct {
+	Name       string
+	Port       int
+	Command    string
+	Dir        string
+	Running    bool
+	Configured bool // true if saved to config
+	LocalURL   string
+	IPURL      string
+	DNSURL     string
+}
+
 type model struct {
-	tab       int // 0 = active, 1 = config
-	processes []processRow
-	cursor    int // active tab cursor
-	configs   []configRow
-	configCur int // config tab cursor
+	items     []listItem
+	cursor    int
 	width     int
 	statusMsg string
 	statusErr bool
@@ -23,19 +33,13 @@ type model struct {
 // Run launches the TUI. It fetches the initial data and starts the
 // bubbletea program.
 func Run() error {
-	processes, err := fetchProcesses()
+	items, err := fetchItems()
 	if err != nil {
-		processes = nil
-	}
-
-	configs, err := fetchConfigs(processes)
-	if err != nil {
-		configs = nil
+		items = nil
 	}
 
 	m := model{
-		processes: processes,
-		configs:   configs,
+		items: items,
 	}
 
 	p := tea.NewProgram(m)
@@ -60,11 +64,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "q", "ctrl+c":
 			return m, tea.Quit
 
-		case "tab":
-			m.tab = 1 - m.tab // toggle 0↔1
-			m.statusMsg = ""
-			return m, nil
-
 		case "up", "k":
 			m.moveCursor(-1)
 			m.statusMsg = ""
@@ -75,14 +74,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.statusMsg = ""
 			return m, nil
 
-		case "s":
-			return m.stopSelected()
-
 		case "enter":
-			if m.tab == 1 {
-				return m.startSelected()
-			}
-			return m, nil
+			return m.toggleStartStop()
+
+		case "s":
+			return m.toggleSave()
 		}
 	}
 	return m, nil
@@ -91,28 +87,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // -- cursor helpers --
 
 func (m *model) moveCursor(delta int) {
-	if m.tab == 0 {
-		m.cursor += delta
-		if m.cursor < 0 {
-			m.cursor = 0
-		}
-		if m.cursor >= len(m.processes) {
-			m.cursor = len(m.processes) - 1
-		}
-		if m.cursor < 0 {
-			m.cursor = 0
-		}
-	} else {
-		m.configCur += delta
-		if m.configCur < 0 {
-			m.configCur = 0
-		}
-		if m.configCur >= len(m.configs) {
-			m.configCur = len(m.configs) - 1
-		}
-		if m.configCur < 0 {
-			m.configCur = 0
-		}
+	m.cursor += delta
+	if m.cursor < 0 {
+		m.cursor = 0
+	}
+	if m.cursor >= len(m.items) {
+		m.cursor = len(m.items) - 1
+	}
+	if m.cursor < 0 {
+		m.cursor = 0
 	}
 }
 
@@ -180,70 +163,110 @@ func (m model) View() string {
 	if statusLine != "" {
 		b.WriteString(statusLine + "\n")
 	}
-	b.WriteString(renderHelp(m.tab))
+	b.WriteString(renderHelp())
 
 	return b.String()
 }
 
 // -- actions --
 
-func (m model) stopSelected() (model, tea.Cmd) {
-	var name string
+func (m model) toggleStartStop() (model, tea.Cmd) {
+	if len(m.items) == 0 {
+		return m, nil
+	}
 
-	if m.tab == 0 {
-		// Active tab - stop from processes list
-		if len(m.processes) == 0 {
-			return m, nil
-		}
-		name = m.processes[m.cursor].Name
-	} else {
-		// Config tab - stop from configs list
-		if len(m.configs) == 0 {
-			return m, nil
-		}
-		cfg := m.configs[m.configCur]
-		if !cfg.Running {
-			m.statusMsg = fmt.Sprintf("'%s' is not running", cfg.Name)
+	item := m.items[m.cursor]
+
+	if item.Running {
+		// Stop the process
+		err := stopProcess(item.Name)
+		if err != nil {
+			m.statusMsg = fmt.Sprintf("failed to stop '%s': %s", item.Name, err)
 			m.statusErr = true
 			return m, nil
 		}
-		name = cfg.Name
+		m.statusMsg = fmt.Sprintf("process '%s' stopped", item.Name)
+		m.statusErr = false
+	} else {
+		// Start the process (only configured items can be started)
+		if !item.Configured {
+			m.statusMsg = fmt.Sprintf("cannot start '%s': save to config first (press 's')", item.Name)
+			m.statusErr = true
+			return m, nil
+		}
+		err := startItem(item)
+		if err != nil {
+			m.statusMsg = fmt.Sprintf("failed to start '%s': %s", item.Name, err)
+			m.statusErr = true
+			return m, nil
+		}
+		m.statusMsg = fmt.Sprintf("process '%s' started", item.Name)
+		m.statusErr = false
 	}
 
-	err := stopProcess(name)
-	if err != nil {
-		m.statusMsg = fmt.Sprintf("failed to stop '%s': %s", name, err)
-		m.statusErr = true
-		return m, nil
-	}
-
-	m.statusMsg = fmt.Sprintf("process '%s' stopped", name)
-	m.statusErr = false
-
-	return m, nil
+	// Reload data to reflect changes
+	return m.reload()
 }
 
-func (m model) startSelected() (model, tea.Cmd) {
-	if len(m.configs) == 0 {
+func (m model) toggleSave() (model, tea.Cmd) {
+	if len(m.items) == 0 {
 		return m, nil
 	}
 
-	cfg := m.configs[m.configCur]
-	if cfg.Running {
-		m.statusMsg = fmt.Sprintf("'%s' is already running", cfg.Name)
-		m.statusErr = true
-		return m, nil
+	item := m.items[m.cursor]
+
+	if item.Configured {
+		// Remove from config
+		err := removeFromConfig(item.Name)
+		if err != nil {
+			m.statusMsg = fmt.Sprintf("failed to remove '%s' from config: %s", item.Name, err)
+			m.statusErr = true
+			return m, nil
+		}
+		m.statusMsg = fmt.Sprintf("'%s' removed from config", item.Name)
+		m.statusErr = false
+	} else {
+		// Save to config
+		err := saveToConfig(item)
+		if err != nil {
+			m.statusMsg = fmt.Sprintf("failed to save '%s' to config: %s", item.Name, err)
+			m.statusErr = true
+			return m, nil
+		}
+		m.statusMsg = fmt.Sprintf("'%s' saved to config", item.Name)
+		m.statusErr = false
 	}
 
-	err := startProcess(cfg)
+	// Reload data to reflect changes
+	return m.reload()
+}
+
+// reload refreshes the data from daemon and config.
+func (m model) reload() (model, tea.Cmd) {
+	items, err := fetchItems()
 	if err != nil {
-		m.statusMsg = fmt.Sprintf("failed to start '%s': %s", cfg.Name, err)
+		m.statusMsg = fmt.Sprintf("failed to reload: %s", err)
 		m.statusErr = true
 		return m, nil
 	}
 
-	m.statusMsg = fmt.Sprintf("process '%s' started", cfg.Name)
-	m.statusErr = false
+	// Preserve cursor position if possible
+	oldCursor := m.cursor
+	m.items = items
+
+	// Adjust cursor if out of bounds
+	if m.cursor >= len(m.items) {
+		m.cursor = len(m.items) - 1
+	}
+	if m.cursor < 0 {
+		m.cursor = 0
+	}
+
+	// If cursor changed dramatically, try to find the same item by name
+	if oldCursor < len(m.items) && oldCursor >= 0 {
+		// Cursor is still valid, keep it
+		m.cursor = oldCursor
+	}
 
 	return m, nil
 }
