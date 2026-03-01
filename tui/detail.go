@@ -24,7 +24,7 @@ func renderRightPane(m model) string {
 	var b strings.Builder
 
 	// Name header
-	b.WriteString("  " + cli.Bold.Render(item.Name) + "\n\n")
+	b.WriteString(" " + cli.Bold.Render(item.Name) + "\n")
 
 	// Key-value pairs
 	rows := []struct {
@@ -87,7 +87,7 @@ func renderKeyValuePairs(rows []struct {
 
 	var b strings.Builder
 	for _, r := range rows {
-		label := detailLabel.Render(fmt.Sprintf("  %-*s", labelW, r.label))
+		label := detailLabel.Render(fmt.Sprintf(" %-*s", labelW, r.label))
 
 		// Render URLs with cyan styling
 		value := r.value
@@ -95,7 +95,7 @@ func renderKeyValuePairs(rows []struct {
 			value = urlStyle.Render(value)
 		}
 
-		b.WriteString(label + "  " + value + "\n")
+		b.WriteString(label + " " + value + "\n")
 	}
 
 	return b.String()

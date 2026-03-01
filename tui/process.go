@@ -21,7 +21,7 @@ func renderLeftPane(m model) string {
 	var b strings.Builder
 
 	if len(m.items) == 0 {
-		b.WriteString("  " + cli.Dim.Render("No processes") + "\n")
+		b.WriteString(" " + cli.Dim.Render("No processes") + "\n")
 		return b.String()
 	}
 
@@ -36,7 +36,7 @@ func renderLeftPane(m model) string {
 	}
 
 	// Calculate column widths
-	nameW, portW := columnWidths(m.items)
+	nameW, portW := 0, 0 // kept for compatibility, but not used with right-aligned layout
 
 	// Configured section
 	if len(configured) > 0 {
@@ -47,8 +47,8 @@ func renderLeftPane(m model) string {
 
 	// Separator if both sections exist
 	if len(configured) > 0 && len(ephemeral) > 0 {
-		separator := cli.Dim.Render(strings.Repeat("─", nameW+portW+6))
-		b.WriteString("  " + separator + "\n")
+		separator := cli.Dim.Render(strings.Repeat("─", 22)) // match content width
+		b.WriteString(" " + separator + "\n")
 	}
 
 	// Ephemeral section
@@ -63,9 +63,24 @@ func renderLeftPane(m model) string {
 	return b.String()
 }
 
-// renderItemRow renders a single item row.
+// renderItemRow renders a single item row with right-aligned port.
 func renderItemRow(m model, item listItem, index, nameW, portW int) string {
-	cols := fmt.Sprintf("%-*s  %-*d", nameW, item.Name, portW, item.Port)
+	// Fixed content width for left pane
+	const contentWidth = 22
+
+	// Calculate spacing between name and port
+	nameLen := len(item.Name)
+	portStr := fmt.Sprintf("%d", item.Port)
+	portLen := len(portStr)
+
+	// Calculate needed spacing
+	spacing := contentWidth - nameLen - portLen - 3 // 3 = dot + 2 spaces before dot
+	if spacing < 1 {
+		spacing = 1
+	}
+
+	// Build row with right-aligned port
+	row := item.Name + strings.Repeat(" ", spacing) + portStr
 
 	dot := stoppedDot
 	if item.Running {
@@ -74,10 +89,10 @@ func renderItemRow(m model, item listItem, index, nameW, portW int) string {
 
 	if index == m.cursor {
 		// Selected row
-		return "  " + dot + " " + selectedStyle.Render(cols) + "\n"
+		return " " + dot + " " + selectedStyle.Render(row) + "\n"
 	}
 	// Normal row
-	return "  " + dot + " " + normalStyle.Render(cols) + "\n"
+	return " " + dot + " " + normalStyle.Render(row) + "\n"
 }
 
 // columnWidths calculates NAME and PORT column widths.

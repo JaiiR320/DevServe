@@ -101,12 +101,17 @@ func (m *model) moveCursor(delta int) {
 
 // -- layout --
 
-// Pane border style: subtle left border for the right pane.
+// Pane border styles: rounded borders for both panes with minimal padding.
 var (
-	rightBorderStyle = lipgloss.NewStyle().
-		BorderLeft(true).
-		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(lipgloss.Color("8"))
+	leftPaneStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("8")).
+			Padding(0, 1) // minimal: 0 vertical, 1 horizontal
+
+	rightPaneStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("8")).
+			Padding(0, 1) // minimal: 0 vertical, 1 horizontal
 )
 
 func (m model) View() string {
@@ -114,34 +119,38 @@ func (m model) View() string {
 		return ""
 	}
 
-	// Pane widths
-	leftW := m.width * 35 / 100
-	if leftW < 25 {
-		leftW = 25
+	// Fixed left pane width, give rest to right pane
+	leftContentWidth := 22        // content width for left pane
+	leftW := leftContentWidth + 6 // +6 for borders/padding
+	rightW := m.width - leftW - 6 // -6 for right pane borders/padding only (no gap needed)
+	if rightW < 30 {
+		rightW = 30 // minimum right pane width
 	}
-	rightW := m.width - leftW - 1 // -1 for border character
 
 	// Render pane contents first (without styling)
 	leftContent := renderLeftPane(m)
 	rightContent := renderRightPane(m)
 
-	// Calculate heights
-	leftHeight := lipgloss.Height(leftContent)
-	rightHeight := lipgloss.Height(rightContent)
-	maxHeight := leftHeight
-	if rightHeight > maxHeight {
-		maxHeight = rightHeight
+	// Calculate content heights
+	leftContentHeight := lipgloss.Height(leftContent)
+	rightContentHeight := lipgloss.Height(rightContent)
+	contentHeight := leftContentHeight
+	if rightContentHeight > contentHeight {
+		contentHeight = rightContentHeight
 	}
 
-	// Apply widths and equal heights to both panes
-	leftPane := lipgloss.NewStyle().
+	// Total height includes borders (2 rows) but padding is internal
+	paneHeight := contentHeight + 2 // +2 for top/bottom borders only
+
+	// Apply border styles with calculated dimensions
+	leftPane := leftPaneStyle.
 		Width(leftW).
-		Height(maxHeight).
+		Height(paneHeight).
 		Render(leftContent)
 
-	rightPane := rightBorderStyle.
+	rightPane := rightPaneStyle.
 		Width(rightW).
-		Height(maxHeight).
+		Height(paneHeight).
 		Render(rightContent)
 
 	// Join panes side by side
