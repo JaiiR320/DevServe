@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"devserve/config"
 	"devserve/daemon"
 	"encoding/json"
 	"errors"
@@ -116,6 +117,58 @@ func fetchDetail(name string) (*processDetail, error) {
 		Command: info.Command,
 		Dir:     info.Dir,
 	}, nil
+}
+
+// fetchConfigs loads saved configurations and cross-references with running
+// processes to set the Running flag.
+func fetchConfigs(processes []processRow) ([]configRow, error) {
+	configs, err := config.LoadConfigs(config.ConfigFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load configs: %w", err)
+	}
+
+	// Build a set of running process names for fast lookup
+	running := make(map[string]bool, len(processes))
+	for _, p := range processes {
+		running[p.Name] = true
+	}
+
+	rows := make([]configRow, len(configs))
+	for i, c := range configs {
+		rows[i] = configRow{
+			Name:    c.Name,
+			Port:    c.Port,
+			Command: c.Command,
+			Dir:     c.Directory,
+			Running: running[c.Name],
+		}
+	}
+
+	sort.Slice(rows, func(i, j int) bool {
+		return rows[i].Port < rows[j].Port
+	})
+
+	return rows, nil
+}
+
+// startProcess sends a serve request to the daemon to start a saved config.
+func startProcess(cfg configRow) error {
+	resp, err := sendRequest(&daemon.Request{
+		Action: "serve",
+		Args: map[string]any{
+			"name":    cfg.Name,
+			"port":    cfg.Port,
+			"command": cfg.Command,
+			"cwd":     cfg.Dir,
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to send serve request: %w", err)
+	}
+	if !resp.OK {
+		return errors.New(resp.Error)
+	}
+	return nil
 }
 
 // stopProcess sends a stop request to the daemon for the named process.
