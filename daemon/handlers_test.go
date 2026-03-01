@@ -342,3 +342,62 @@ func TestHandleLogsValid(t *testing.T) {
 		t.Errorf("expected output to contain stderr content 'error alpha', got %q", resp.Data)
 	}
 }
+
+func TestHandleGetMissingName(t *testing.T) {
+	resetState(t)
+
+	resp := handleGet(map[string]any{})
+
+	if resp.OK {
+		t.Fatal("expected error response, got OK")
+	}
+	if !strings.Contains(resp.Error, "missing or invalid 'name'") {
+		t.Errorf("expected error to contain %q, got %q", "missing or invalid 'name'", resp.Error)
+	}
+}
+
+func TestHandleGetNotFound(t *testing.T) {
+	resetState(t)
+
+	resp := handleGet(map[string]any{"name": "ghost"})
+
+	if resp.OK {
+		t.Fatal("expected error response, got OK")
+	}
+	if !strings.Contains(resp.Error, "not found") {
+		t.Errorf("expected error to contain %q, got %q", "not found", resp.Error)
+	}
+}
+
+func TestHandleGetValid(t *testing.T) {
+	resetState(t)
+
+	dir := t.TempDir()
+	mu.Lock()
+	processes["myapp"] = &process.Process{Name: "myapp", Port: 3000, Command: "npm start", Dir: dir}
+	mu.Unlock()
+
+	resp := handleGet(map[string]any{"name": "myapp"})
+
+	if !resp.OK {
+		t.Fatalf("expected OK response, got error: %s", resp.Error)
+	}
+
+	var info map[string]any
+	if err := json.Unmarshal([]byte(resp.Data), &info); err != nil {
+		t.Fatalf("failed to parse response data: %v", err)
+	}
+
+	if info["name"] != "myapp" {
+		t.Errorf("expected name %q, got %q", "myapp", info["name"])
+	}
+	if info["port"] != float64(3000) {
+		t.Errorf("expected port 3000, got %v", info["port"])
+	}
+	if info["command"] != "npm start" {
+		t.Errorf("expected command %q, got %q", "npm start", info["command"])
+	}
+	if info["dir"] != dir {
+		t.Errorf("expected dir %q, got %q", dir, info["dir"])
+	}
+}
