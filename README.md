@@ -8,9 +8,6 @@ Run dev servers and expose them over HTTPS via Tailscale. Logs go to files inste
 # start a process (auto-starts daemon if needed)
 devserve serve myapp 3000 "npm run dev"
 
-# shorthand — same thing
-devserve myapp 3000 "npm run dev"
-
 # list running processes
 devserve list
 
@@ -23,6 +20,22 @@ devserve stop myapp
 ```
 
 Your app is available at `https://<tailnet-hostname>:3000` across your tailnet.
+
+## TUI
+
+Run the interactive UI:
+
+```bash
+devserve
+```
+
+**Keys:**
+- `↑/↓` — navigate processes
+- `enter` — start/stop selected process
+- `s` — save/remove from config
+- `q` — quit
+
+The left pane shows all processes: configured (top) and ephemeral (bottom). Green ● = running, gray ○ = stopped. The right pane shows details for the selected process.
 
 ## Configuration
 
