@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 )
 
 // sendRequest sends a request to the daemon, auto-starting it if needed.
@@ -76,6 +77,10 @@ func fetchProcesses() ([]processRow, error) {
 
 		rows = append(rows, row)
 	}
+
+	sort.Slice(rows, func(i, j int) bool {
+		return rows[i].Port < rows[j].Port
+	})
 
 	return rows, nil
 }
