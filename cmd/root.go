@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"devserve/cli"
+	"devserve/tui"
 	"fmt"
 	"os"
 
@@ -14,8 +15,7 @@ var rootCmd = &cobra.Command{
 	Long:  `Serve your local dev servers across your Tailscale network with devserve.`,
 	Args:  cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		fmt.Println("TUI coming soon...")
-		return nil
+		return tui.Run()
 	},
 }
 
