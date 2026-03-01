@@ -2,9 +2,6 @@ package tui
 
 import (
 	"devserve/cli"
-	"devserve/daemon"
-	"encoding/json"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -12,21 +9,12 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-// processRow holds the display data for a single running process.
-type processRow struct {
-	Name     string
-	Port     int
-	LocalURL string
-}
-
 type model struct {
 	processes []processRow
 	cursor    int
 	width     int
-	height    int
 	statusMsg string
 	statusErr bool
-	err       error
 }
 
 // Run launches the TUI. It fetches the initial process list and starts
@@ -41,7 +29,7 @@ func Run() error {
 		processes: processes,
 	}
 
-	p := tea.NewProgram(m, tea.WithAltScreen())
+	p := tea.NewProgram(m)
 	_, err = p.Run()
 	return err
 }
@@ -56,7 +44,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
-		m.height = msg.Height
 		return m, nil
 
 	case tea.KeyMsg:
@@ -68,12 +55,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.cursor > 0 {
 				m.cursor--
 			}
+			m.statusMsg = ""
 			return m, nil
 
 		case "down", "j":
 			if m.cursor < len(m.processes)-1 {
 				m.cursor++
 			}
+			m.statusMsg = ""
 			return m, nil
 
 		case "s":
@@ -86,21 +75,45 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// -- layout --
+
+// Pane border style: subtle left border for the right pane.
+var (
+	rightBorderStyle = lipgloss.NewStyle().
+		BorderLeft(true).
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderForeground(lipgloss.Color("8"))
+)
+
 func (m model) View() string {
-	var b strings.Builder
-
-	// Title
-	title := cli.Bold.Render("devserve")
-	b.WriteString("\n  " + title + "\n\n")
-
-	if len(m.processes) == 0 {
-		empty := cli.Dim.Render("No running processes")
-		b.WriteString("  " + empty + "\n")
-	} else {
-		b.WriteString(m.renderTable())
+	if m.width == 0 {
+		return ""
 	}
 
-	// Status message — positioned above the help line
+	// Pane widths
+	leftW := m.width * 35 / 100
+	if leftW < 25 {
+		leftW = 25
+	}
+	rightW := m.width - leftW - 1 // -1 for border character
+
+	// Render pane contents
+	leftContent := renderLeftPane(m)
+	rightContent := renderRightPane(m)
+
+	// Apply widths to panes (no fixed height — content determines height)
+	leftPane := lipgloss.NewStyle().
+		Width(leftW).
+		Render(leftContent)
+
+	rightPane := rightBorderStyle.
+		Width(rightW).
+		Render(rightContent)
+
+	// Join panes side by side
+	body := lipgloss.JoinHorizontal(lipgloss.Top, leftPane, rightPane)
+
+	// Status line
 	statusLine := ""
 	if m.statusMsg != "" {
 		if m.statusErr {
@@ -110,73 +123,13 @@ func (m model) View() string {
 		}
 	}
 
-	// Help line
-	help := cli.Dim.Render("  ↑/↓ navigate • s stop • r refresh • q quit")
-
-	// Fill remaining vertical space so help sits at the bottom
-	contentLines := strings.Count(b.String(), "\n")
-	// 2 more lines: status + help
-	pad := m.height - contentLines - 2
-	if pad < 1 {
-		pad = 1
-	}
-	b.WriteString(strings.Repeat("\n", pad))
+	// Stack: body + status + help
+	var b strings.Builder
+	b.WriteString(body + "\n")
 	if statusLine != "" {
 		b.WriteString(statusLine + "\n")
-	} else {
-		b.WriteString("\n")
 	}
-	b.WriteString(help)
-
-	return b.String()
-}
-
-// -- table rendering --
-
-var (
-	headerStyle   = cli.Bold.Foreground(lipgloss.Color("6"))
-	selectedStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("6"))
-	normalStyle   = lipgloss.NewStyle()
-	cursorStr     = cli.Cyan.Render("▸")
-)
-
-func (m model) renderTable() string {
-	// Calculate column widths
-	nameW := 4 // "NAME"
-	portW := 4 // "PORT"
-	for _, p := range m.processes {
-		if len(p.Name) > nameW {
-			nameW = len(p.Name)
-		}
-		ps := fmt.Sprintf("%d", p.Port)
-		if len(ps) > portW {
-			portW = len(ps)
-		}
-	}
-
-	var b strings.Builder
-
-	// Header
-	header := fmt.Sprintf("    %-*s  %-*s  %s", nameW, "NAME", portW, "PORT", "URL")
-	b.WriteString("  " + headerStyle.Render(header) + "\n")
-
-	// Rows
-	for i, p := range m.processes {
-		cursor := " "
-		style := normalStyle
-		if i == m.cursor {
-			cursor = cursorStr
-			style = selectedStyle
-		}
-
-		row := fmt.Sprintf("  %s %-*s  %-*d  %s",
-			cursor,
-			nameW, p.Name,
-			portW, p.Port,
-			p.LocalURL,
-		)
-		b.WriteString(style.Render(row) + "\n")
-	}
+	b.WriteString(renderHelp())
 
 	return b.String()
 }
@@ -223,77 +176,4 @@ func (m model) refresh() (model, tea.Cmd) {
 	}
 
 	return m, nil
-}
-
-// -- daemon communication --
-
-// sendRequest sends a request to the daemon, auto-starting it if needed.
-func sendRequest(req *daemon.Request) (*daemon.Response, error) {
-	resp, err := daemon.Send(req)
-	if err == nil {
-		return resp, nil
-	}
-
-	if !errors.Is(err, daemon.ErrDaemonNotRunning) {
-		return resp, err
-	}
-
-	// Auto-start the daemon
-	if startErr := daemon.Start(true); startErr != nil {
-		return nil, fmt.Errorf("failed to auto-start daemon: %w", startErr)
-	}
-
-	return daemon.Send(req)
-}
-
-// fetchProcesses queries the daemon for the current process list.
-func fetchProcesses() ([]processRow, error) {
-	resp, err := sendRequest(&daemon.Request{Action: "list"})
-	if err != nil {
-		return nil, fmt.Errorf("failed to send list request: %w", err)
-	}
-	if !resp.OK {
-		return nil, errors.New(resp.Error)
-	}
-
-	type entry struct {
-		Name string `json:"name"`
-		Port int    `json:"port"`
-	}
-	type listResp struct {
-		Processes []entry `json:"processes"`
-		Hostname  string  `json:"hostname"`
-		IP        string  `json:"ip"`
-	}
-
-	var lr listResp
-	if err := json.Unmarshal([]byte(resp.Data), &lr); err != nil {
-		return nil, fmt.Errorf("failed to parse list response: %w", err)
-	}
-
-	rows := make([]processRow, len(lr.Processes))
-	for i, e := range lr.Processes {
-		rows[i] = processRow{
-			Name:     e.Name,
-			Port:     e.Port,
-			LocalURL: fmt.Sprintf("http://localhost:%d", e.Port),
-		}
-	}
-
-	return rows, nil
-}
-
-// stopProcess sends a stop request to the daemon for the named process.
-func stopProcess(name string) error {
-	resp, err := sendRequest(&daemon.Request{
-		Action: "stop",
-		Args:   map[string]any{"name": name},
-	})
-	if err != nil {
-		return fmt.Errorf("failed to send stop request: %w", err)
-	}
-	if !resp.OK {
-		return errors.New(resp.Error)
-	}
-	return nil
 }
