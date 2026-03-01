@@ -4,11 +4,14 @@ import (
 	"devserve/cli"
 	"fmt"
 	"strings"
+
+	"github.com/charmbracelet/lipgloss"
 )
 
 // Detail pane styles.
 var (
 	detailLabel = cli.Dim
+	urlStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("6"))
 )
 
 // renderRightPane renders the right pane based on the active tab.
@@ -108,10 +111,10 @@ func renderKeyValuePairs(rows []struct {
 	for _, r := range rows {
 		label := detailLabel.Render(fmt.Sprintf("  %-*s", labelW, r.label))
 
-		// Render URLs as clickable hyperlinks
+		// Render URLs with cyan underline styling (no OSC 8 hyperlinks in TUI)
 		value := r.value
 		if strings.HasPrefix(value, "http://") || strings.HasPrefix(value, "https://") {
-			value = cli.Hyperlink(value, value)
+			value = urlStyle.Render(value)
 		}
 
 		b.WriteString(label + "  " + value + "\n")

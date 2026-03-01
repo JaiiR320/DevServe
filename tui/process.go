@@ -31,22 +31,18 @@ type configRow struct {
 // Left pane styles.
 var (
 	headerStyle   = cli.Bold.Foreground(lipgloss.Color("6"))
-	selectedStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("6"))
+	selectedStyle = lipgloss.NewStyle().Bold(true)
 	normalStyle   = lipgloss.NewStyle()
-	cursorStr     = cli.Cyan.Render("▸")
 	runningDot    = cli.Green.Render("●")
 	stoppedDot    = cli.Dim.Render("○")
 )
 
-// renderLeftPane renders the left pane: title, tab bar, and the active list.
+// renderLeftPane renders the left pane: tab bar and the active list.
 func renderLeftPane(m model) string {
 	var b strings.Builder
 
-	// Title
-	title := cli.Bold.Render("devserve")
-	b.WriteString("\n  " + title + "\n")
-
-	// Tab bar
+	// Tab bar at top
+	b.WriteString("\n")
 	b.WriteString(renderTabBar(m.tab) + "\n\n")
 
 	// Table based on active tab
@@ -65,14 +61,14 @@ func renderTabBar(tab int) string {
 	config := "Config"
 
 	if tab == 0 {
-		active = cli.Cyan.Bold(true).Render(active)
+		active = cli.Bold.Foreground(lipgloss.Color("6")).Render(active)
 		config = cli.Dim.Render(config)
 	} else {
 		active = cli.Dim.Render(active)
-		config = cli.Cyan.Bold(true).Render(config)
+		config = cli.Bold.Foreground(lipgloss.Color("6")).Render(config)
 	}
 
-	return "  " + active + cli.Dim.Render(" • ") + config
+	return "  " + active + cli.Dim.Render("  ") + config
 }
 
 // renderProcessTable renders the active processes table.
@@ -85,21 +81,21 @@ func renderProcessTable(m model) string {
 
 	var b strings.Builder
 
-	// Header
-	header := fmt.Sprintf("  %-*s  %-*s", nameW, "NAME", portW, "PORT")
+	// Header - consistent 2-space indent with rows
+	header := fmt.Sprintf("%-*s  %-*s", nameW, "NAME", portW, "PORT")
 	b.WriteString("  " + headerStyle.Render(header) + "\n")
 
 	// Rows
 	for i, p := range m.processes {
-		prefix := "  "
-		style := normalStyle
-		if i == m.cursor {
-			prefix = cursorStr + " "
-			style = selectedStyle
-		}
-
 		cols := fmt.Sprintf("%-*s  %-*d", nameW, p.Name, portW, p.Port)
-		b.WriteString("  " + prefix + style.Render(cols) + "\n")
+
+		if i == m.cursor {
+			// Selected row: bold and bright
+			b.WriteString("  " + selectedStyle.Render(cols) + "\n")
+		} else {
+			// Normal row
+			b.WriteString("  " + normalStyle.Render(cols) + "\n")
+		}
 	}
 
 	return b.String()
@@ -108,33 +104,34 @@ func renderProcessTable(m model) string {
 // renderConfigTable renders the saved configurations table with status dots.
 func renderConfigTable(m model) string {
 	if len(m.configs) == 0 {
-		return "  " + cli.Dim.Render("No saved configs") + "\n"
+		return "  " + cli.Dim.Render("No saved configs") + "\n\n  " +
+			cli.Dim.Render("Tip: Use 'devserve config' to add configurations") + "\n"
 	}
 
 	nameW, portW := columnWidthsConfigs(m.configs)
 
 	var b strings.Builder
 
-	// Header — extra 2 chars for the dot + space before NAME
-	header := fmt.Sprintf("    %-*s  %-*s", nameW, "NAME", portW, "PORT")
+	// Header - consistent with row layout (space for cursor + dot)
+	header := fmt.Sprintf("  %-*s  %-*s", nameW, "NAME", portW, "PORT")
 	b.WriteString("  " + headerStyle.Render(header) + "\n")
 
 	// Rows
 	for i, c := range m.configs {
-		prefix := "  "
-		style := normalStyle
-		if i == m.configCur {
-			prefix = cursorStr + " "
-			style = selectedStyle
-		}
-
 		dot := stoppedDot
 		if c.Running {
 			dot = runningDot
 		}
 
 		cols := fmt.Sprintf("%-*s  %-*d", nameW, c.Name, portW, c.Port)
-		b.WriteString("  " + prefix + dot + " " + style.Render(cols) + "\n")
+
+		if i == m.configCur {
+			// Selected row: bold and bright with dot
+			b.WriteString("  " + dot + " " + selectedStyle.Render(cols) + "\n")
+		} else {
+			// Normal row
+			b.WriteString("  " + dot + " " + normalStyle.Render(cols) + "\n")
+		}
 	}
 
 	return b.String()

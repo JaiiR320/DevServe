@@ -76,19 +76,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case "s":
-			if m.tab == 0 {
-				return m.stopSelected()
-			}
-			return m, nil
+			return m.stopSelected()
 
 		case "enter":
 			if m.tab == 1 {
 				return m.startSelected()
 			}
 			return m, nil
-
-		case "r":
-			return m.refresh()
 		}
 	}
 	return m, nil
@@ -144,17 +138,27 @@ func (m model) View() string {
 	}
 	rightW := m.width - leftW - 1 // -1 for border character
 
-	// Render pane contents
+	// Render pane contents first (without styling)
 	leftContent := renderLeftPane(m)
 	rightContent := renderRightPane(m)
 
-	// Apply widths to panes
+	// Calculate heights
+	leftHeight := lipgloss.Height(leftContent)
+	rightHeight := lipgloss.Height(rightContent)
+	maxHeight := leftHeight
+	if rightHeight > maxHeight {
+		maxHeight = rightHeight
+	}
+
+	// Apply widths and equal heights to both panes
 	leftPane := lipgloss.NewStyle().
 		Width(leftW).
+		Height(maxHeight).
 		Render(leftContent)
 
 	rightPane := rightBorderStyle.
 		Width(rightW).
+		Height(maxHeight).
 		Render(rightContent)
 
 	// Join panes side by side
@@ -184,22 +188,38 @@ func (m model) View() string {
 // -- actions --
 
 func (m model) stopSelected() (model, tea.Cmd) {
-	if len(m.processes) == 0 {
-		return m, nil
+	var name string
+
+	if m.tab == 0 {
+		// Active tab - stop from processes list
+		if len(m.processes) == 0 {
+			return m, nil
+		}
+		name = m.processes[m.cursor].Name
+	} else {
+		// Config tab - stop from configs list
+		if len(m.configs) == 0 {
+			return m, nil
+		}
+		cfg := m.configs[m.configCur]
+		if !cfg.Running {
+			m.statusMsg = fmt.Sprintf("'%s' is not running", cfg.Name)
+			m.statusErr = true
+			return m, nil
+		}
+		name = cfg.Name
 	}
 
-	proc := m.processes[m.cursor]
-	err := stopProcess(proc.Name)
+	err := stopProcess(name)
 	if err != nil {
-		m.statusMsg = fmt.Sprintf("failed to stop '%s': %s", proc.Name, err)
+		m.statusMsg = fmt.Sprintf("failed to stop '%s': %s", name, err)
 		m.statusErr = true
 		return m, nil
 	}
 
-	m.statusMsg = fmt.Sprintf("process '%s' stopped", proc.Name)
+	m.statusMsg = fmt.Sprintf("process '%s' stopped", name)
 	m.statusErr = false
 
-	m, _ = m.refresh()
 	return m, nil
 }
 
@@ -224,41 +244,6 @@ func (m model) startSelected() (model, tea.Cmd) {
 
 	m.statusMsg = fmt.Sprintf("process '%s' started", cfg.Name)
 	m.statusErr = false
-
-	m, _ = m.refresh()
-	return m, nil
-}
-
-func (m model) refresh() (model, tea.Cmd) {
-	processes, err := fetchProcesses()
-	if err != nil {
-		m.statusMsg = fmt.Sprintf("failed to refresh: %s", err)
-		m.statusErr = true
-		return m, nil
-	}
-	m.processes = processes
-
-	configs, err := fetchConfigs(processes)
-	if err != nil {
-		m.statusMsg = fmt.Sprintf("failed to refresh configs: %s", err)
-		m.statusErr = true
-		return m, nil
-	}
-	m.configs = configs
-
-	// Clamp cursors
-	if m.cursor >= len(m.processes) {
-		m.cursor = len(m.processes) - 1
-	}
-	if m.cursor < 0 {
-		m.cursor = 0
-	}
-	if m.configCur >= len(m.configs) {
-		m.configCur = len(m.configs) - 1
-	}
-	if m.configCur < 0 {
-		m.configCur = 0
-	}
 
 	return m, nil
 }
