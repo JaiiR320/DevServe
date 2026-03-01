@@ -9,18 +9,13 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "devserve [name] [port] [command]",
+	Use:   "devserve",
 	Short: "Serve your local projects with Tailscale",
 	Long:  `Serve your local dev servers across your Tailscale network with devserve.`,
-	Args:  cobra.ArbitraryArgs,
+	Args:  cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if len(args) == 0 {
-			return cmd.Help()
-		}
-		if len(args) != 3 {
-			return fmt.Errorf("accepts 3 arg(s), received %d", len(args))
-		}
-		return runServe(args)
+		fmt.Println("TUI coming soon...")
+		return nil
 	},
 }
 
