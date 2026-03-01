@@ -43,7 +43,7 @@ func runServe(args []string) error {
 	if !resp.OK {
 		return errors.New(resp.Error)
 	}
-	fmt.Println(cli.Success(resp.Data))
+	fmt.Println(cli.RenderServeResult(resp.Data))
 	return nil
 }
 

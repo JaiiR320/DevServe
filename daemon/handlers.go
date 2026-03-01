@@ -78,7 +78,20 @@ func handleServe(args map[string]any) *Response {
 	processes[p.Name] = p
 	mu.Unlock()
 	log.Printf("started '%s' on port %d", name, port)
-	return OkResponse(fmt.Sprintf("process '%s' started on port %d", name, port))
+
+	sr := serveResponse{Name: name, Port: port}
+	if info, err := tunnel.GetTailscaleInfo(tunnel.DefaultRunner); err == nil {
+		sr.Hostname = info.Hostname
+		sr.IP = info.IP
+	} else {
+		log.Printf("failed to get tailscale info: %s", err)
+	}
+
+	data, err := json.Marshal(sr)
+	if err != nil {
+		return OkResponse(fmt.Sprintf("process '%s' started on port %d", name, port))
+	}
+	return OkResponse(string(data))
 }
 
 func handleStop(args map[string]any) *Response {
@@ -105,6 +118,13 @@ func handleStop(args map[string]any) *Response {
 	mu.Unlock()
 	log.Printf("stopped '%s' (port %d)", name, p.Port)
 	return OkResponse(fmt.Sprintf("process '%s' stopped", name))
+}
+
+type serveResponse struct {
+	Name     string `json:"name"`
+	Port     int    `json:"port"`
+	Hostname string `json:"hostname"`
+	IP       string `json:"ip"`
 }
 
 type listEntry struct {

@@ -160,6 +160,43 @@ func RenderConfigTable(configs []config.ProcessConfig) string {
 	return b.String()
 }
 
+// RenderServeResult parses the JSON serve response and returns a styled
+// success message with clickable links for local, IP, and DNS URLs.
+func RenderServeResult(data string) string {
+	type serveResp struct {
+		Name     string `json:"name"`
+		Port     int    `json:"port"`
+		Hostname string `json:"hostname"`
+		IP       string `json:"ip"`
+	}
+
+	var sr serveResp
+	if err := json.Unmarshal([]byte(data), &sr); err != nil {
+		return Success(data)
+	}
+
+	var b strings.Builder
+	b.WriteString(Success(fmt.Sprintf("process '%s' started on port %d", sr.Name, sr.Port)))
+
+	localURL := fmt.Sprintf("http://localhost:%d", sr.Port)
+	b.WriteString("\n  ")
+	b.WriteString(Cyan.Render("local") + "  " + Hyperlink(localURL, localURL))
+
+	if sr.IP != "" {
+		ipURL := fmt.Sprintf("http://%s:%d", sr.IP, sr.Port)
+		b.WriteString("\n  ")
+		b.WriteString(Cyan.Render("ip") + "     " + Hyperlink(ipURL, ipURL))
+	}
+
+	if sr.Hostname != "" {
+		dnsURL := fmt.Sprintf("https://%s:%d", sr.Hostname, sr.Port)
+		b.WriteString("\n  ")
+		b.WriteString(Cyan.Render("dns") + "    " + Hyperlink(dnsURL, dnsURL))
+	}
+
+	return b.String()
+}
+
 // Hyperlink returns an OSC 8 hyperlink that renders as a clickable label in
 // supported terminals.
 func Hyperlink(url, label string) string {

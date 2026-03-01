@@ -58,6 +58,6 @@ func runStart(name string) error {
 		return errors.New(resp.Error)
 	}
 
-	fmt.Println(cli.Success(resp.Data))
+	fmt.Println(cli.RenderServeResult(resp.Data))
 	return nil
 }
