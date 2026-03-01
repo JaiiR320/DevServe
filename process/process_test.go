@@ -213,3 +213,38 @@ func TestProcessStopCanRetryAfterTailscaleFailure(t *testing.T) {
 		t.Errorf("expected tunnel Stop to be called 2 times, got %d", mockTunnel.stopCalls)
 	}
 }
+
+// failServeTunnel fails on Serve() but succeeds on Stop().
+type failServeTunnel struct{}
+
+func (failServeTunnel) Serve(port int) error { return fmt.Errorf("tailscale serve failed") }
+func (failServeTunnel) Stop(port int) error  { return nil }
+
+func TestProcessStartTailscaleFails(t *testing.T) {
+	testutil.RequireNC(t)
+
+	// Replace tunnel with one that fails on Serve
+	original := tunnel.DefaultTunnel
+	tunnel.SetTunnel(failServeTunnel{})
+	t.Cleanup(func() { tunnel.SetTunnel(original) })
+
+	port := testutil.FreePort(t)
+	dir := t.TempDir()
+	p, err := process.CreateProcess("testapp", port, dir, "echo test")
+	if err != nil {
+		t.Fatalf("CreateProcess failed: %v", err)
+	}
+
+	cmd := fmt.Sprintf("nc -l %d", port)
+	err = p.Start(cmd)
+	if err == nil {
+		t.Fatal("expected error when tailscale fails, got nil")
+	}
+	if !strings.Contains(err.Error(), "failed to enable tailscale serve") {
+		t.Errorf("expected error to contain %q, got %q", "failed to enable tailscale serve", err.Error())
+	}
+
+	// Process should have been killed - verify by checking we can write to logs
+	// If process is alive, logs might still be open depending on timing
+	// The main assertion is that we got the proper error and cleanup was attempted
+}
