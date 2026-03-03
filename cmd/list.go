@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"devserve/cli"
-	"devserve/daemon"
+	"devserve/client"
 	"devserve/protocol"
 	"errors"
 	"fmt"
@@ -18,7 +18,7 @@ var listCmd = &cobra.Command{
 		req := &protocol.Request{
 			Action: "list",
 		}
-		resp, err := daemon.Send(req)
+		resp, err := client.Send(req)
 		if err != nil {
 			return fmt.Errorf("failed to send list request: %w", err)
 		}

@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"devserve/cli"
-	"devserve/daemon"
+	"devserve/client"
 	"devserve/protocol"
 	"errors"
 	"fmt"
@@ -26,7 +26,7 @@ var stopCmd = &cobra.Command{
 			err  error
 		)
 		cli.Spin("Stopping process...", func() {
-			resp, err = daemon.Send(req)
+			resp, err = client.Send(req)
 		})
 		if err != nil {
 			return fmt.Errorf("failed to send stop request: %w", err)

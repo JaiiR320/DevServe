@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"devserve/cli"
+	"devserve/client"
 	"devserve/config"
 	"devserve/daemon"
 	"devserve/util"
@@ -25,7 +26,18 @@ var daemonCmdStart = &cobra.Command{
 	Args:  cobra.NoArgs,
 	Short: "Start the daemon",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return daemon.Start(!foreground)
+		if foreground {
+			return daemon.Start(false)
+		}
+		var err error
+		cli.Spin("Starting daemon...", func() {
+			err = client.StartDaemon()
+		})
+		if err != nil {
+			return err
+		}
+		fmt.Println(cli.Success("daemon started") + " " + cli.Info("logs: "+filepath.Join(config.DaemonDir, config.DaemonLogFile)))
+		return nil
 	},
 }
 

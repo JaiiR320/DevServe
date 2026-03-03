@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"devserve/daemon"
+	"devserve/client"
 	"devserve/protocol"
 	"errors"
 	"fmt"
@@ -22,7 +22,7 @@ var logsCmd = &cobra.Command{
 				"lines": fmt.Sprintf("%d", lines),
 			},
 		}
-		resp, err := daemon.Send(req)
+		resp, err := client.Send(req)
 		if err != nil {
 			return fmt.Errorf("failed to send logs request: %w", err)
 		}

@@ -1,8 +1,8 @@
 package tui
 
 import (
+	"devserve/client"
 	"devserve/config"
-	"devserve/daemon"
 	"devserve/protocol"
 	"encoding/json"
 	"errors"
@@ -12,21 +12,21 @@ import (
 
 // sendRequest sends a request to the daemon, auto-starting it if needed.
 func sendRequest(req *protocol.Request) (*protocol.Response, error) {
-	resp, err := daemon.Send(req)
+	resp, err := client.Send(req)
 	if err == nil {
 		return resp, nil
 	}
 
-	if !errors.Is(err, daemon.ErrDaemonNotRunning) {
+	if !errors.Is(err, client.ErrDaemonNotRunning) {
 		return resp, err
 	}
 
 	// Auto-start the daemon
-	if startErr := daemon.Start(true); startErr != nil {
+	if startErr := client.StartDaemon(); startErr != nil {
 		return nil, fmt.Errorf("failed to auto-start daemon: %w", startErr)
 	}
 
-	return daemon.Send(req)
+	return client.Send(req)
 }
 
 // fetchItems queries the daemon and config to build a unified list of processes.
