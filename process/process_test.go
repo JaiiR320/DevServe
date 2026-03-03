@@ -2,8 +2,8 @@ package process_test
 
 import (
 	"devserve/config"
-	"devserve/internal/testutil"
 	"devserve/process"
+	"devserve/testutil"
 	"devserve/tunnel"
 	"fmt"
 	"os"

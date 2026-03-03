@@ -1,8 +1,8 @@
 package daemon
 
 import (
-	"devserve/internal/testutil"
 	"devserve/process"
+	"devserve/testutil"
 	"devserve/tunnel"
 	"fmt"
 	"testing"

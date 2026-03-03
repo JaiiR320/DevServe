@@ -1,8 +1,8 @@
 package process_test
 
 import (
-	"devserve/internal/testutil"
 	"devserve/process"
+	"devserve/testutil"
 	"fmt"
 	"net"
 	"strings"
