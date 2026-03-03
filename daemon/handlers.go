@@ -5,7 +5,6 @@ import (
 	"devserve/process"
 	"devserve/protocol"
 	"devserve/tunnel"
-	"devserve/util"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -169,13 +168,13 @@ func handleLogs(args map[string]any) *protocol.Response {
 	stdoutPath := filepath.Join(p.Dir, config.ProcessLogDir, config.ProcessStdoutLog)
 	stderrPath := filepath.Join(p.Dir, config.ProcessLogDir, config.ProcessStderrLog)
 
-	stdoutLines, err := util.LastNLines(stdoutPath, lines)
+	stdoutLines, err := lastNLines(stdoutPath, lines)
 	if err != nil {
 		log.Printf("failed to read stdout log: %s", err)
 		return protocol.ErrResponse(fmt.Errorf("failed to read stdout log: %w", err))
 	}
 
-	stderrLines, err := util.LastNLines(stderrPath, lines)
+	stderrLines, err := lastNLines(stderrPath, lines)
 	if err != nil {
 		log.Printf("failed to read stderr log: %s", err)
 		return protocol.ErrResponse(fmt.Errorf("failed to read stderr log: %w", err))

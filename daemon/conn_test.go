@@ -17,7 +17,7 @@ func TestHandleConnPing(t *testing.T) {
 
 	stop := make(chan struct{}, 1)
 
-	go HandleConn(server, stop)
+	go handleConn(server, stop)
 
 	if err := protocol.SendRequest(client, &protocol.Request{Action: "ping"}); err != nil {
 		t.Fatalf("failed to send request: %v", err)
@@ -43,7 +43,7 @@ func TestHandleConnUnknownAction(t *testing.T) {
 
 	stop := make(chan struct{}, 1)
 
-	go HandleConn(server, stop)
+	go handleConn(server, stop)
 
 	if err := protocol.SendRequest(client, &protocol.Request{Action: "bogus"}); err != nil {
 		t.Fatalf("failed to send request: %v", err)
@@ -69,7 +69,7 @@ func TestHandleConnMalformed(t *testing.T) {
 
 	stop := make(chan struct{}, 1)
 
-	go HandleConn(server, stop)
+	go handleConn(server, stop)
 
 	// Write garbage bytes followed by a newline (JSON decoder reads line-delimited)
 	if _, err := client.Write([]byte("not valid json\n")); err != nil {
@@ -100,7 +100,7 @@ func TestHandleConnShutdown(t *testing.T) {
 
 	stop := make(chan struct{}, 1)
 
-	go HandleConn(server, stop)
+	go handleConn(server, stop)
 
 	if err := protocol.SendRequest(client, &protocol.Request{Action: "shutdown"}); err != nil {
 		t.Fatalf("failed to send request: %v", err)

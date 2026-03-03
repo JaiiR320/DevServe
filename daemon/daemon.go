@@ -1,7 +1,6 @@
 package daemon
 
 import (
-	"devserve/cli"
 	"devserve/config"
 	"devserve/process"
 	"devserve/protocol"
@@ -10,9 +9,7 @@ import (
 	"log"
 	"net"
 	"os"
-	"os/exec"
 	"os/signal"
-	"path/filepath"
 	"strings"
 	"sync"
 	"syscall"
@@ -24,73 +21,10 @@ var (
 	mu        sync.RWMutex
 )
 
-func Start(background bool) error {
-	if background {
-		return startInBackground()
-	}
-	return startForeground()
-}
-
-func startInBackground() error {
-	err := os.MkdirAll(config.DaemonDir, config.DirPermissions)
-	if err != nil {
-		return fmt.Errorf("failed to create log directory: %w", err)
-	}
-
-	logFile, err := os.Create(filepath.Join(config.DaemonDir, config.DaemonLogFile))
-	if err != nil {
-		return fmt.Errorf("failed to open log file: %w", err)
-	}
-	defer logFile.Close()
-
-	conn, err := net.Dial("unix", config.Socket)
-	if err == nil {
-		conn.Close()
-		return errors.New("daemon is already running")
-	}
-
-	execPath, err := os.Executable()
-	if err != nil {
-		return fmt.Errorf("failed to get executable path: %w", err)
-	}
-
-	cmd := exec.Command(execPath, "daemon", "start", "--foreground")
-	cmd.Stdout = logFile
-	cmd.Stderr = logFile
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		Setpgid: true,
-	}
-
-	var startErr error
-	cli.Spin("Starting daemon...", func() {
-		err = cmd.Start()
-		if err != nil {
-			startErr = fmt.Errorf("failed to start daemon: %w", err)
-			return
-		}
-
-		// Wait a moment and verify daemon started with ping
-		time.Sleep(config.DaemonStartDelay)
-		pingReq := &protocol.Request{Action: "ping"}
-		resp, err := Send(pingReq)
-		if err != nil {
-			startErr = fmt.Errorf("failed to start daemon: %w", err)
-			return
-		}
-		if !resp.OK || resp.Data != "pong" {
-			startErr = errors.New("daemon health check failed")
-			return
-		}
-	})
-	if startErr != nil {
-		return startErr
-	}
-
-	fmt.Println(cli.Success("daemon started") + " " + cli.Info("logs: "+filepath.Join(config.DaemonDir, config.DaemonLogFile)))
-	return nil
-}
-
-func startForeground() error {
+// Run starts the daemon in foreground mode.
+// It listens on the Unix socket, accepts connections, and handles requests
+// until a shutdown signal is received.
+func Run() error {
 	log.SetOutput(os.Stdout)
 	log.SetFlags(log.Ldate | log.Ltime)
 	processes = make(map[string]*process.Process)
@@ -132,7 +66,7 @@ func startForeground() error {
 			}
 			continue
 		}
-		go HandleConn(conn, stopChan)
+		go handleConn(conn, stopChan)
 	}
 
 	// Stop all running child processes before exiting
@@ -143,18 +77,6 @@ func startForeground() error {
 
 	os.Remove(config.Socket)
 	return nil
-}
-
-func Stop() (string, error) {
-	req := &protocol.Request{Action: "shutdown"}
-	resp, err := Send(req)
-	if err != nil {
-		return "", fmt.Errorf("failed to send shutdown request: %w", err)
-	}
-	if !resp.OK {
-		return "", fmt.Errorf("failed to shutdown daemon: %s", resp.Error)
-	}
-	return resp.Data, nil
 }
 
 // stopAllProcesses stops all running child processes with retry logic.
@@ -227,7 +149,8 @@ func stopAllProcesses(timeout time.Duration) []string {
 	return failed
 }
 
-func HandleConn(conn net.Conn, stop chan struct{}) {
+// handleConn handles a single connection to the daemon.
+func handleConn(conn net.Conn, stop chan struct{}) {
 	defer conn.Close()
 
 	req, err := protocol.ReadRequest(conn)

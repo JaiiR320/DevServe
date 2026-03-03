@@ -1,13 +1,13 @@
-package util
+package daemon
 
 import (
 	"os"
 	"strings"
 )
 
-// LastNLines reads a file and returns the last n lines.
+// lastNLines reads a file and returns the last n lines.
 // Returns an empty slice if the file doesn't exist or is empty.
-func LastNLines(path string, n int) ([]string, error) {
+func lastNLines(path string, n int) ([]string, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {

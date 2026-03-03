@@ -1,7 +1,6 @@
-package util_test
+package daemon
 
 import (
-	"devserve/util"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -17,7 +16,7 @@ func TestLastNLinesMoreThanN(t *testing.T) {
 	}
 	os.WriteFile(path, []byte(strings.Join(lines, "\n")+"\n"), 0644)
 
-	got, err := util.LastNLines(path, 5)
+	got, err := lastNLines(path, 5)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -35,7 +34,7 @@ func TestLastNLinesFewerThanN(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "test.log")
 	os.WriteFile(path, []byte("line 1\nline 2\nline 3\n"), 0644)
 
-	got, err := util.LastNLines(path, 10)
+	got, err := lastNLines(path, 10)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -53,7 +52,7 @@ func TestLastNLinesExactlyN(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "test.log")
 	os.WriteFile(path, []byte("a\nb\nc\nd\ne\n"), 0644)
 
-	got, err := util.LastNLines(path, 5)
+	got, err := lastNLines(path, 5)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -71,7 +70,7 @@ func TestLastNLinesEmptyFile(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "empty.log")
 	os.WriteFile(path, []byte(""), 0644)
 
-	got, err := util.LastNLines(path, 5)
+	got, err := lastNLines(path, 5)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -81,7 +80,7 @@ func TestLastNLinesEmptyFile(t *testing.T) {
 }
 
 func TestLastNLinesNonexistentFile(t *testing.T) {
-	got, err := util.LastNLines("/tmp/does-not-exist-ever-12345.log", 5)
+	got, err := lastNLines("/tmp/does-not-exist-ever-12345.log", 5)
 	if err != nil {
 		t.Fatalf("expected nil error for nonexistent file, got %v", err)
 	}
@@ -94,7 +93,7 @@ func TestLastNLinesTrailingNewlines(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "test.log")
 	os.WriteFile(path, []byte("line 1\nline 2\n\n\n"), 0644)
 
-	got, err := util.LastNLines(path, 10)
+	got, err := lastNLines(path, 10)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -109,7 +108,7 @@ func TestLastNLinesSingleLineNoNewline(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "test.log")
 	os.WriteFile(path, []byte("only line"), 0644)
 
-	got, err := util.LastNLines(path, 5)
+	got, err := lastNLines(path, 5)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

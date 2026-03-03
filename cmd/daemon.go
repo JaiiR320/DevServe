@@ -5,8 +5,8 @@ import (
 	"devserve/client"
 	"devserve/config"
 	"devserve/daemon"
-	"devserve/util"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -27,7 +27,7 @@ var daemonCmdStart = &cobra.Command{
 	Short: "Start the daemon",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if foreground {
-			return daemon.Start(false)
+			return daemon.Run()
 		}
 		var err error
 		cli.Spin("Starting daemon...", func() {
@@ -69,14 +69,24 @@ var daemonCmdLogs = &cobra.Command{
 		lines, _ := cmd.Flags().GetInt("lines")
 		path := filepath.Join(config.DaemonDir, config.DaemonLogFile)
 
-		logLines, err := util.LastNLines(path, lines)
+		data, err := os.ReadFile(path)
 		if err != nil {
+			if os.IsNotExist(err) {
+				fmt.Println(cli.Info("no daemon logs found"))
+				return nil
+			}
 			return fmt.Errorf("failed to read daemon log: %w", err)
 		}
 
-		if len(logLines) == 0 {
+		content := strings.TrimRight(string(data), "\n")
+		if content == "" {
 			fmt.Println(cli.Info("no daemon logs found"))
 			return nil
+		}
+
+		logLines := strings.Split(content, "\n")
+		if len(logLines) > lines {
+			logLines = logLines[len(logLines)-lines:]
 		}
 
 		var b strings.Builder
