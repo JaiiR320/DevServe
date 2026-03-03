@@ -3,8 +3,6 @@ package cmd
 import (
 	"devserve/cli"
 	"devserve/client"
-	"devserve/protocol"
-	"errors"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -15,26 +13,14 @@ var stopCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Short: "Stop your dev server and tailscale",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		req := &protocol.Request{
-			Action: "stop",
-			Args: map[string]any{
-				"name": args[0],
-			},
-		}
-		var (
-			resp *protocol.Response
-			err  error
-		)
+		var err error
 		cli.Spin("Stopping process...", func() {
-			resp, err = client.Send(req)
+			err = client.Stop(args[0])
 		})
 		if err != nil {
-			return fmt.Errorf("failed to send stop request: %w", err)
+			return fmt.Errorf("failed to stop: %w", err)
 		}
-		if !resp.OK {
-			return errors.New(resp.Error)
-		}
-		fmt.Println(cli.Success(resp.Data))
+		fmt.Println(cli.Success(fmt.Sprintf("process '%s' stopped", args[0])))
 		return nil
 	},
 }

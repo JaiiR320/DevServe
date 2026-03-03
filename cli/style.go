@@ -2,7 +2,7 @@ package cli
 
 import (
 	"devserve/config"
-	"encoding/json"
+	"devserve/protocol"
 	"fmt"
 	"strings"
 
@@ -33,25 +33,9 @@ func Info(msg string) string {
 	return Cyan.Render("•") + " " + msg
 }
 
-// RenderTable parses the JSON list response and returns a formatted table string.
-func RenderTable(data string) string {
-	type entry struct {
-		Name string `json:"name"`
-		Port int    `json:"port"`
-	}
-
-	type listResp struct {
-		Processes []entry `json:"processes"`
-		Hostname  string  `json:"hostname"`
-		IP        string  `json:"ip"`
-	}
-
-	var lr listResp
-	if err := json.Unmarshal([]byte(data), &lr); err != nil {
-		return data // fallback to raw output
-	}
-
-	if len(lr.Processes) == 0 {
+// RenderTable renders a ListResult as a formatted table string.
+func RenderTable(lr *protocol.ListResult) string {
+	if lr == nil || len(lr.Processes) == 0 {
 		return Dim.Render("No active processes")
 	}
 
@@ -160,19 +144,11 @@ func RenderConfigTable(configs []config.ProcessConfig) string {
 	return b.String()
 }
 
-// RenderServeResult parses the JSON serve response and returns a styled
-// success message with clickable links for local, IP, and DNS URLs.
-func RenderServeResult(data string) string {
-	type serveResp struct {
-		Name     string `json:"name"`
-		Port     int    `json:"port"`
-		Hostname string `json:"hostname"`
-		IP       string `json:"ip"`
-	}
-
-	var sr serveResp
-	if err := json.Unmarshal([]byte(data), &sr); err != nil {
-		return Success(data)
+// RenderServeResult renders a ServeResult as a styled success message
+// with clickable links for local, IP, and DNS URLs.
+func RenderServeResult(sr *protocol.ServeResult) string {
+	if sr == nil {
+		return ""
 	}
 
 	var b strings.Builder

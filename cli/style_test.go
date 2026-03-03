@@ -2,6 +2,7 @@ package cli_test
 
 import (
 	"devserve/cli"
+	"devserve/protocol"
 	"strings"
 	"testing"
 )
@@ -37,8 +38,14 @@ func TestInfo(t *testing.T) {
 }
 
 func TestRenderTableValid(t *testing.T) {
-	input := `{"processes":[{"name":"app","port":3000}],"hostname":"host.example.ts.net","ip":"100.1.2.3"}`
-	out := cli.RenderTable(input)
+	lr := &protocol.ListResult{
+		Processes: []protocol.ListEntry{
+			{Name: "app", Port: 3000},
+		},
+		Hostname: "host.example.ts.net",
+		IP:       "100.1.2.3",
+	}
+	out := cli.RenderTable(lr)
 
 	for _, want := range []string{"NAME", "PORT", "LOCAL", "IP", "DNS", "app", "3000"} {
 		if !strings.Contains(out, want) {
@@ -58,8 +65,15 @@ func TestRenderTableValid(t *testing.T) {
 }
 
 func TestRenderTableMultiple(t *testing.T) {
-	input := `{"processes":[{"name":"web","port":8080},{"name":"api","port":9090}],"hostname":"host.example.ts.net","ip":"100.1.2.3"}`
-	out := cli.RenderTable(input)
+	lr := &protocol.ListResult{
+		Processes: []protocol.ListEntry{
+			{Name: "web", Port: 8080},
+			{Name: "api", Port: 9090},
+		},
+		Hostname: "host.example.ts.net",
+		IP:       "100.1.2.3",
+	}
+	out := cli.RenderTable(lr)
 
 	for _, want := range []string{"NAME", "PORT", "web", "8080", "api", "9090"} {
 		if !strings.Contains(out, want) {
@@ -69,23 +83,33 @@ func TestRenderTableMultiple(t *testing.T) {
 }
 
 func TestRenderTableEmpty(t *testing.T) {
-	out := cli.RenderTable(`{"processes":[],"hostname":"host.example.ts.net","ip":"100.1.2.3"}`)
+	lr := &protocol.ListResult{
+		Processes: []protocol.ListEntry{},
+		Hostname:  "host.example.ts.net",
+		IP:        "100.1.2.3",
+	}
+	out := cli.RenderTable(lr)
 	if !strings.Contains(out, "No active processes") {
 		t.Errorf("expected output to contain %q, got %q", "No active processes", out)
 	}
 }
 
-func TestRenderTableInvalidJSON(t *testing.T) {
-	input := "this is not json"
-	out := cli.RenderTable(input)
-	if out != input {
-		t.Errorf("expected raw input %q returned as fallback, got %q", input, out)
+func TestRenderTableNil(t *testing.T) {
+	out := cli.RenderTable(nil)
+	if !strings.Contains(out, "No active processes") {
+		t.Errorf("expected output to contain %q, got %q", "No active processes", out)
 	}
 }
 
 func TestRenderTableHyperlinks(t *testing.T) {
-	input := `{"processes":[{"name":"app","port":3000}],"hostname":"host.example.ts.net","ip":"100.1.2.3"}`
-	out := cli.RenderTable(input)
+	lr := &protocol.ListResult{
+		Processes: []protocol.ListEntry{
+			{Name: "app", Port: 3000},
+		},
+		Hostname: "host.example.ts.net",
+		IP:       "100.1.2.3",
+	}
+	out := cli.RenderTable(lr)
 
 	// Check OSC 8 sequences are present for each URL type
 	if !strings.Contains(out, "http://localhost:3000") {

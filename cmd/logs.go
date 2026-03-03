@@ -1,10 +1,10 @@
 package cmd
 
 import (
+	"devserve/cli"
 	"devserve/client"
-	"devserve/protocol"
-	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -15,21 +15,28 @@ var logsCmd = &cobra.Command{
 	Short: "Show process logs",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		lines, _ := cmd.Flags().GetInt("lines")
-		req := &protocol.Request{
-			Action: "logs",
-			Args: map[string]any{
-				"name":  args[0],
-				"lines": fmt.Sprintf("%d", lines),
-			},
-		}
-		resp, err := client.Send(req)
+		logsResult, err := client.Logs(args[0], lines)
 		if err != nil {
-			return fmt.Errorf("failed to send logs request: %w", err)
+			return fmt.Errorf("failed to get logs: %w", err)
 		}
-		if !resp.OK {
-			return errors.New(resp.Error)
+
+		// Render with styling
+		var b strings.Builder
+		b.WriteString(cli.Cyan.Render("─── stdout ───"))
+		b.WriteString("\n")
+		for _, line := range logsResult.Stdout {
+			b.WriteString(line)
+			b.WriteString("\n")
 		}
-		fmt.Println(resp.Data)
+		b.WriteString("\n")
+		b.WriteString(cli.Cyan.Render("─── stderr ───"))
+		b.WriteString("\n")
+		for _, line := range logsResult.Stderr {
+			b.WriteString(cli.Red.Render(line))
+			b.WriteString("\n")
+		}
+
+		fmt.Print(strings.TrimRight(b.String(), "\n"))
 		return nil
 	},
 }

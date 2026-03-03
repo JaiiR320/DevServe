@@ -3,8 +3,6 @@ package cmd
 import (
 	"devserve/cli"
 	"devserve/client"
-	"devserve/protocol"
-	"errors"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -17,25 +15,12 @@ var restartCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		name := args[0]
 
-		// Stop the process
-		req := &protocol.Request{
-			Action: "stop",
-			Args: map[string]any{
-				"name": name,
-			},
-		}
-		var (
-			resp *protocol.Response
-			err  error
-		)
+		var err error
 		cli.Spin("Stopping process...", func() {
-			resp, err = client.Send(req)
+			err = client.Stop(name)
 		})
 		if err != nil {
-			return fmt.Errorf("failed to send stop request: %w", err)
-		}
-		if !resp.OK {
-			return errors.New(resp.Error)
+			return fmt.Errorf("failed to stop: %w", err)
 		}
 
 		// Start it again from saved config

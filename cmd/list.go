@@ -3,8 +3,6 @@ package cmd
 import (
 	"devserve/cli"
 	"devserve/client"
-	"devserve/protocol"
-	"errors"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -15,17 +13,11 @@ var listCmd = &cobra.Command{
 	Args:  cobra.NoArgs,
 	Short: "List processes",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		req := &protocol.Request{
-			Action: "list",
-		}
-		resp, err := client.Send(req)
+		lr, err := client.List()
 		if err != nil {
-			return fmt.Errorf("failed to send list request: %w", err)
+			return fmt.Errorf("failed to list: %w", err)
 		}
-		if !resp.OK {
-			return errors.New(resp.Error)
-		}
-		fmt.Println(cli.RenderTable(resp.Data))
+		fmt.Println(cli.RenderTable(lr))
 		return nil
 	},
 }

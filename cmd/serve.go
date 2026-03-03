@@ -2,10 +2,11 @@ package cmd
 
 import (
 	"devserve/cli"
+	"devserve/client"
 	"devserve/protocol"
-	"errors"
 	"fmt"
 	"os"
+	"strconv"
 
 	"github.com/spf13/cobra"
 )
@@ -24,26 +25,21 @@ func runServe(args []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
-	req := &protocol.Request{
-		Action: "serve",
-		Args: map[string]any{
-			"name":    args[0],
-			"port":    args[1],
-			"command": args[2],
-			"cwd":     cwd,
-		},
+
+	port, err := strconv.Atoi(args[1])
+	if err != nil {
+		return fmt.Errorf("invalid port: %w", err)
 	}
-	var resp *protocol.Response
+
+	var result *protocol.ServeResult
 	cli.Spin("Starting process...", func() {
-		resp, err = sendRequest(req)
+		result, err = client.Serve(args[0], port, args[2], cwd)
 	})
 	if err != nil {
-		return fmt.Errorf("failed to send serve request: %w", err)
+		return fmt.Errorf("failed to serve: %w", err)
 	}
-	if !resp.OK {
-		return errors.New(resp.Error)
-	}
-	fmt.Println(cli.RenderServeResult(resp.Data))
+
+	fmt.Println(cli.RenderServeResult(result))
 	return nil
 }
 

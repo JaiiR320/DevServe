@@ -2,9 +2,8 @@ package cmd
 
 import (
 	"devserve/cli"
+	"devserve/client"
 	"devserve/config"
-	"devserve/protocol"
-	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -72,33 +71,17 @@ func init() {
 
 func runConfigSave(name string) error {
 	// Query daemon for process info
-	req := &protocol.Request{
-		Action: "get",
-		Args: map[string]any{
-			"name": name,
-		},
-	}
-
-	resp, err := sendRequest(req)
+	info, err := client.Get(name)
 	if err != nil {
 		return fmt.Errorf("failed to query process: %w", err)
-	}
-	if !resp.OK {
-		return errors.New(resp.Error)
-	}
-
-	// Parse the response
-	var data protocol.ProcessInfo
-	if err := json.Unmarshal([]byte(resp.Data), &data); err != nil {
-		return fmt.Errorf("failed to parse process info: %w", err)
 	}
 
 	// Extract process details
 	cfg := config.ProcessConfig{
 		Name:      name,
-		Port:      data.Port,
-		Command:   data.Command,
-		Directory: data.Dir,
+		Port:      info.Port,
+		Command:   info.Command,
+		Directory: info.Dir,
 	}
 
 	if err := config.SaveConfig(config.ConfigFile, cfg); err != nil {

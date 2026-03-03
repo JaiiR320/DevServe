@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"devserve/cli"
+	"devserve/client"
 	"devserve/config"
 	"devserve/protocol"
 	"errors"
@@ -30,34 +31,20 @@ func runStart(name string) error {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
-	// Send serve request to daemon
-	req := &protocol.Request{
-		Action: "serve",
-		Args: map[string]any{
-			"name":    cfg.Name,
-			"port":    cfg.Port,
-			"command": cfg.Command,
-			"cwd":     cfg.Directory,
-		},
-	}
-
-	var resp *protocol.Response
+	var result *protocol.ServeResult
 	cli.Spin(fmt.Sprintf("Starting '%s'...", name), func() {
-		resp, err = sendRequest(req)
+		result, err = client.Serve(cfg.Name, cfg.Port, cfg.Command, cfg.Directory)
 	})
 
 	if err != nil {
-		return fmt.Errorf("failed to send start request: %w", err)
-	}
-	if !resp.OK {
 		// Check if it's "already running" error
-		if errors.Is(errors.New(resp.Error), errors.New("already")) {
+		if errors.Is(err, errors.New("already")) {
 			fmt.Println(cli.Info(fmt.Sprintf("process '%s' is already running", name)))
 			return nil
 		}
-		return errors.New(resp.Error)
+		return fmt.Errorf("failed to start: %w", err)
 	}
 
-	fmt.Println(cli.RenderServeResult(resp.Data))
+	fmt.Println(cli.RenderServeResult(result))
 	return nil
 }

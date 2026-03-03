@@ -2,6 +2,7 @@ package tui
 
 import (
 	"devserve/cli"
+	"devserve/client"
 	"fmt"
 	"strings"
 
@@ -30,9 +31,12 @@ type model struct {
 	statusErr bool
 }
 
-// Run launches the TUI. It fetches the initial data and starts the
-// bubbletea program.
+// Run launches the TUI. It ensures the daemon is running, fetches the
+// initial data, and starts the bubbletea program.
 func Run() error {
+	// Ensure daemon is running (ignore "already running" error)
+	_ = client.StartDaemon()
+
 	items, err := fetchItems()
 	if err != nil {
 		items = nil

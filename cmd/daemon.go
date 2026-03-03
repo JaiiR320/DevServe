@@ -51,7 +51,7 @@ var daemonCmdStop = &cobra.Command{
 			err error
 		)
 		cli.Spin("Stopping daemon...", func() {
-			msg, err = daemon.Stop()
+			msg, err = client.Shutdown()
 		})
 		if err != nil {
 			return err

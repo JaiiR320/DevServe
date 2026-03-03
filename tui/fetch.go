@@ -3,57 +3,17 @@ package tui
 import (
 	"devserve/client"
 	"devserve/config"
-	"devserve/protocol"
-	"encoding/json"
-	"errors"
 	"fmt"
 	"sort"
 )
-
-// sendRequest sends a request to the daemon, auto-starting it if needed.
-func sendRequest(req *protocol.Request) (*protocol.Response, error) {
-	resp, err := client.Send(req)
-	if err == nil {
-		return resp, nil
-	}
-
-	if !errors.Is(err, client.ErrDaemonNotRunning) {
-		return resp, err
-	}
-
-	// Auto-start the daemon
-	if startErr := client.StartDaemon(); startErr != nil {
-		return nil, fmt.Errorf("failed to auto-start daemon: %w", startErr)
-	}
-
-	return client.Send(req)
-}
 
 // fetchItems queries the daemon and config to build a unified list of processes.
 // Configured items come first, followed by ephemeral (running but not configured) items.
 func fetchItems() ([]listItem, error) {
 	// Fetch running processes from daemon
-	resp, err := sendRequest(&protocol.Request{Action: "list"})
+	lr, err := client.List()
 	if err != nil {
-		return nil, fmt.Errorf("failed to send list request: %w", err)
-	}
-	if !resp.OK {
-		return nil, errors.New(resp.Error)
-	}
-
-	type entry struct {
-		Name string `json:"name"`
-		Port int    `json:"port"`
-	}
-	type listResp struct {
-		Processes []entry `json:"processes"`
-		Hostname  string  `json:"hostname"`
-		IP        string  `json:"ip"`
-	}
-
-	var lr listResp
-	if err := json.Unmarshal([]byte(resp.Data), &lr); err != nil {
-		return nil, fmt.Errorf("failed to parse list response: %w", err)
+		return nil, fmt.Errorf("failed to list: %w", err)
 	}
 
 	// Build map of running processes
@@ -72,7 +32,7 @@ func fetchItems() ([]listItem, error) {
 		}
 
 		// Fetch detail (command, dir) via get RPC
-		detail, err := fetchDetail(e.Name)
+		detail, err := client.Get(e.Name)
 		if err == nil {
 			info.Command = detail.Command
 			info.Dir = detail.Dir
@@ -161,72 +121,15 @@ type processInfo struct {
 	DNSURL   string
 }
 
-// processDetail holds the extra fields returned by the get RPC.
-type processDetail struct {
-	Command string
-	Dir     string
-}
-
-// fetchDetail queries the daemon for a single process's detail.
-func fetchDetail(name string) (*processDetail, error) {
-	resp, err := sendRequest(&protocol.Request{
-		Action: "get",
-		Args:   map[string]any{"name": name},
-	})
-	if err != nil {
-		return nil, err
-	}
-	if !resp.OK {
-		return nil, errors.New(resp.Error)
-	}
-
-	var info struct {
-		Command string `json:"command"`
-		Dir     string `json:"dir"`
-	}
-	if err := json.Unmarshal([]byte(resp.Data), &info); err != nil {
-		return nil, fmt.Errorf("failed to parse get response: %w", err)
-	}
-
-	return &processDetail{
-		Command: info.Command,
-		Dir:     info.Dir,
-	}, nil
-}
-
 // stopProcess sends a stop request to the daemon for the named process.
 func stopProcess(name string) error {
-	resp, err := sendRequest(&protocol.Request{
-		Action: "stop",
-		Args:   map[string]any{"name": name},
-	})
-	if err != nil {
-		return fmt.Errorf("failed to send stop request: %w", err)
-	}
-	if !resp.OK {
-		return errors.New(resp.Error)
-	}
-	return nil
+	return client.Stop(name)
 }
 
 // startItem starts a configured process.
 func startItem(item listItem) error {
-	resp, err := sendRequest(&protocol.Request{
-		Action: "serve",
-		Args: map[string]any{
-			"name":    item.Name,
-			"port":    item.Port,
-			"command": item.Command,
-			"cwd":     item.Dir,
-		},
-	})
-	if err != nil {
-		return fmt.Errorf("failed to send serve request: %w", err)
-	}
-	if !resp.OK {
-		return errors.New(resp.Error)
-	}
-	return nil
+	_, err := client.Serve(item.Name, item.Port, item.Command, item.Dir)
+	return err
 }
 
 // saveToConfig saves an ephemeral process to the config file.
