@@ -22,6 +22,8 @@ func fetchItems() ([]listItem, error) {
 		info := processInfo{
 			Name:     e.Name,
 			Port:     e.Port,
+			Command:  e.Command,
+			Dir:      e.Dir,
 			LocalURL: fmt.Sprintf("http://localhost:%d", e.Port),
 		}
 		if lr.IP != "" {
@@ -29,13 +31,6 @@ func fetchItems() ([]listItem, error) {
 		}
 		if lr.Hostname != "" {
 			info.DNSURL = fmt.Sprintf("https://%s:%d", lr.Hostname, e.Port)
-		}
-
-		// Fetch detail (command, dir) via get RPC
-		detail, err := client.Get(e.Name)
-		if err == nil {
-			info.Command = detail.Command
-			info.Dir = detail.Dir
 		}
 
 		runningProcs[e.Name] = info

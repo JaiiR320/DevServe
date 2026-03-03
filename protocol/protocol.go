@@ -32,8 +32,10 @@ type ListResult struct {
 }
 
 type ListEntry struct {
-	Name string `json:"name"`
-	Port int    `json:"port"`
+	Name    string `json:"name"`
+	Port    int    `json:"port"`
+	Command string `json:"command,omitempty"`
+	Dir     string `json:"dir,omitempty"`
 }
 
 type ProcessInfo struct {

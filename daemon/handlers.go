@@ -127,7 +127,12 @@ func handleList(args map[string]any) *protocol.Response {
 	mu.RLock()
 	entries := make([]protocol.ListEntry, 0, len(processes))
 	for _, v := range processes {
-		entries = append(entries, protocol.ListEntry{Name: v.Name, Port: v.Port})
+		entries = append(entries, protocol.ListEntry{
+			Name:    v.Name,
+			Port:    v.Port,
+			Command: v.Command,
+			Dir:     v.Dir,
+		})
 	}
 	mu.RUnlock()
 
