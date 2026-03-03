@@ -2,12 +2,13 @@ package cmd
 
 import (
 	"devserve/daemon"
+	"devserve/protocol"
 	"errors"
 	"fmt"
 )
 
 // sendRequest sends a request to the daemon, auto-starting it if needed.
-func sendRequest(req *daemon.Request) (*daemon.Response, error) {
+func sendRequest(req *protocol.Request) (*protocol.Response, error) {
 	resp, err := daemon.Send(req)
 	if err == nil {
 		return resp, nil

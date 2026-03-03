@@ -3,6 +3,7 @@ package tui
 import (
 	"devserve/config"
 	"devserve/daemon"
+	"devserve/protocol"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,7 +11,7 @@ import (
 )
 
 // sendRequest sends a request to the daemon, auto-starting it if needed.
-func sendRequest(req *daemon.Request) (*daemon.Response, error) {
+func sendRequest(req *protocol.Request) (*protocol.Response, error) {
 	resp, err := daemon.Send(req)
 	if err == nil {
 		return resp, nil
@@ -32,7 +33,7 @@ func sendRequest(req *daemon.Request) (*daemon.Response, error) {
 // Configured items come first, followed by ephemeral (running but not configured) items.
 func fetchItems() ([]listItem, error) {
 	// Fetch running processes from daemon
-	resp, err := sendRequest(&daemon.Request{Action: "list"})
+	resp, err := sendRequest(&protocol.Request{Action: "list"})
 	if err != nil {
 		return nil, fmt.Errorf("failed to send list request: %w", err)
 	}
@@ -168,7 +169,7 @@ type processDetail struct {
 
 // fetchDetail queries the daemon for a single process's detail.
 func fetchDetail(name string) (*processDetail, error) {
-	resp, err := sendRequest(&daemon.Request{
+	resp, err := sendRequest(&protocol.Request{
 		Action: "get",
 		Args:   map[string]any{"name": name},
 	})
@@ -195,7 +196,7 @@ func fetchDetail(name string) (*processDetail, error) {
 
 // stopProcess sends a stop request to the daemon for the named process.
 func stopProcess(name string) error {
-	resp, err := sendRequest(&daemon.Request{
+	resp, err := sendRequest(&protocol.Request{
 		Action: "stop",
 		Args:   map[string]any{"name": name},
 	})
@@ -210,7 +211,7 @@ func stopProcess(name string) error {
 
 // startItem starts a configured process.
 func startItem(item listItem) error {
-	resp, err := sendRequest(&daemon.Request{
+	resp, err := sendRequest(&protocol.Request{
 		Action: "serve",
 		Args: map[string]any{
 			"name":    item.Name,

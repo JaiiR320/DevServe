@@ -1,4 +1,4 @@
-package daemon
+package protocol
 
 import (
 	"encoding/json"
@@ -15,6 +15,37 @@ type Response struct {
 	OK    bool   `json:"ok"`
 	Data  string `json:"data,omitempty"`
 	Error string `json:"error,omitempty"`
+}
+
+// Result types used across daemon and client
+type ServeResult struct {
+	Name     string `json:"name"`
+	Port     int    `json:"port"`
+	Hostname string `json:"hostname"`
+	IP       string `json:"ip"`
+}
+
+type ListResult struct {
+	Processes []ListEntry `json:"processes"`
+	Hostname  string      `json:"hostname"`
+	IP        string      `json:"ip"`
+}
+
+type ListEntry struct {
+	Name string `json:"name"`
+	Port int    `json:"port"`
+}
+
+type ProcessInfo struct {
+	Name    string `json:"name"`
+	Port    int    `json:"port"`
+	Command string `json:"command"`
+	Dir     string `json:"dir"`
+}
+
+type LogsResult struct {
+	Stdout []string `json:"stdout"`
+	Stderr []string `json:"stderr"`
 }
 
 func OkResponse(data string) *Response {

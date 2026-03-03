@@ -3,7 +3,7 @@ package cmd
 import (
 	"devserve/cli"
 	"devserve/config"
-	"devserve/daemon"
+	"devserve/protocol"
 	"errors"
 	"fmt"
 
@@ -31,7 +31,7 @@ func runStart(name string) error {
 	}
 
 	// Send serve request to daemon
-	req := &daemon.Request{
+	req := &protocol.Request{
 		Action: "serve",
 		Args: map[string]any{
 			"name":    cfg.Name,
@@ -41,7 +41,7 @@ func runStart(name string) error {
 		},
 	}
 
-	var resp *daemon.Response
+	var resp *protocol.Response
 	cli.Spin(fmt.Sprintf("Starting '%s'...", name), func() {
 		resp, err = sendRequest(req)
 	})

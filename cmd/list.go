@@ -3,6 +3,7 @@ package cmd
 import (
 	"devserve/cli"
 	"devserve/daemon"
+	"devserve/protocol"
 	"errors"
 	"fmt"
 
@@ -14,7 +15,7 @@ var listCmd = &cobra.Command{
 	Args:  cobra.NoArgs,
 	Short: "List processes",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		req := &daemon.Request{
+		req := &protocol.Request{
 			Action: "list",
 		}
 		resp, err := daemon.Send(req)

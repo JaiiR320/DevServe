@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"devserve/process"
+	"devserve/protocol"
 	"net"
 	"strings"
 	"testing"
@@ -18,11 +19,11 @@ func TestHandleConnPing(t *testing.T) {
 
 	go HandleConn(server, stop)
 
-	if err := SendRequest(client, &Request{Action: "ping"}); err != nil {
+	if err := protocol.SendRequest(client, &protocol.Request{Action: "ping"}); err != nil {
 		t.Fatalf("failed to send request: %v", err)
 	}
 
-	resp, err := ReadResponse(client)
+	resp, err := protocol.ReadResponse(client)
 	if err != nil {
 		t.Fatalf("failed to read response: %v", err)
 	}
@@ -44,11 +45,11 @@ func TestHandleConnUnknownAction(t *testing.T) {
 
 	go HandleConn(server, stop)
 
-	if err := SendRequest(client, &Request{Action: "bogus"}); err != nil {
+	if err := protocol.SendRequest(client, &protocol.Request{Action: "bogus"}); err != nil {
 		t.Fatalf("failed to send request: %v", err)
 	}
 
-	resp, err := ReadResponse(client)
+	resp, err := protocol.ReadResponse(client)
 	if err != nil {
 		t.Fatalf("failed to read response: %v", err)
 	}
@@ -75,7 +76,7 @@ func TestHandleConnMalformed(t *testing.T) {
 		t.Fatalf("failed to write garbage: %v", err)
 	}
 
-	resp, err := ReadResponse(client)
+	resp, err := protocol.ReadResponse(client)
 	if err != nil {
 		t.Fatalf("failed to read response: %v", err)
 	}
@@ -101,11 +102,11 @@ func TestHandleConnShutdown(t *testing.T) {
 
 	go HandleConn(server, stop)
 
-	if err := SendRequest(client, &Request{Action: "shutdown"}); err != nil {
+	if err := protocol.SendRequest(client, &protocol.Request{Action: "shutdown"}); err != nil {
 		t.Fatalf("failed to send request: %v", err)
 	}
 
-	resp, err := ReadResponse(client)
+	resp, err := protocol.ReadResponse(client)
 	if err != nil {
 		t.Fatalf("failed to read response: %v", err)
 	}

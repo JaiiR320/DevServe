@@ -3,6 +3,7 @@ package daemon
 import (
 	"devserve/config"
 	"devserve/process"
+	"devserve/protocol"
 	"devserve/testutil"
 	"devserve/tunnel"
 	"encoding/json"
@@ -194,7 +195,7 @@ func TestHandleListEmpty(t *testing.T) {
 		t.Fatalf("expected OK response, got error: %s", resp.Error)
 	}
 
-	var lr listResponse
+	var lr protocol.ListResult
 	if err := json.Unmarshal([]byte(resp.Data), &lr); err != nil {
 		t.Fatalf("failed to parse response: %v", err)
 	}
@@ -229,7 +230,7 @@ func TestHandleListPopulated(t *testing.T) {
 		t.Fatalf("expected OK response, got error: %s", resp.Error)
 	}
 
-	var lr listResponse
+	var lr protocol.ListResult
 	if err := json.Unmarshal([]byte(resp.Data), &lr); err != nil {
 		t.Fatalf("failed to parse response data as JSON: %v", err)
 	}

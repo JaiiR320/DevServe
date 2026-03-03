@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"devserve/cli"
-	"devserve/daemon"
+	"devserve/protocol"
 	"errors"
 	"fmt"
 	"os"
@@ -24,7 +24,7 @@ func runServe(args []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
-	req := &daemon.Request{
+	req := &protocol.Request{
 		Action: "serve",
 		Args: map[string]any{
 			"name":    args[0],
@@ -33,7 +33,7 @@ func runServe(args []string) error {
 			"cwd":     cwd,
 		},
 	}
-	var resp *daemon.Response
+	var resp *protocol.Response
 	cli.Spin("Starting process...", func() {
 		resp, err = sendRequest(req)
 	})

@@ -1,9 +1,9 @@
 package daemon
 
 import (
-	"devserve/cli"
 	"devserve/config"
 	"devserve/process"
+	"devserve/protocol"
 	"devserve/tunnel"
 	"devserve/util"
 	"encoding/json"
@@ -11,29 +11,28 @@ import (
 	"log"
 	"path/filepath"
 	"strconv"
-	"strings"
 )
 
-func handlePing(args map[string]any) *Response {
-	return OkResponse("pong")
+func handlePing(args map[string]any) *protocol.Response {
+	return protocol.OkResponse("pong")
 }
 
-func handleServe(args map[string]any) *Response {
+func handleServe(args map[string]any) *protocol.Response {
 	name, ok := args["name"].(string)
 	if !ok || name == "" {
-		return ErrResponse(fmt.Errorf("missing or invalid 'name' argument"))
+		return protocol.ErrResponse(fmt.Errorf("missing or invalid 'name' argument"))
 	}
 
 	mu.RLock()
 	_, exists := processes[name]
 	mu.RUnlock()
 	if exists {
-		return ErrResponse(fmt.Errorf("process '%s' already in use", name))
+		return protocol.ErrResponse(fmt.Errorf("process '%s' already in use", name))
 	}
 
 	portVal, ok := args["port"]
 	if !ok {
-		return ErrResponse(fmt.Errorf("missing or invalid 'port' argument"))
+		return protocol.ErrResponse(fmt.Errorf("missing or invalid 'port' argument"))
 	}
 	// JSON numbers decode as float64
 	var port int
@@ -44,20 +43,20 @@ func handleServe(args map[string]any) *Response {
 		var err error
 		port, err = strconv.Atoi(v)
 		if err != nil {
-			return ErrResponse(fmt.Errorf("invalid port: %w", err))
+			return protocol.ErrResponse(fmt.Errorf("invalid port: %w", err))
 		}
 	default:
-		return ErrResponse(fmt.Errorf("invalid port type"))
+		return protocol.ErrResponse(fmt.Errorf("invalid port type"))
 	}
 
 	if err := process.CheckPortInUse(port); err != nil {
 		log.Printf("port %d in use: %s", port, err)
-		return ErrResponse(err)
+		return protocol.ErrResponse(err)
 	}
 
 	command, ok := args["command"].(string)
 	if !ok || command == "" {
-		return ErrResponse(fmt.Errorf("missing or invalid 'command' argument"))
+		return protocol.ErrResponse(fmt.Errorf("missing or invalid 'command' argument"))
 	}
 
 	cwd, _ := args["cwd"].(string) // optional, empty string if not provided
@@ -65,13 +64,13 @@ func handleServe(args map[string]any) *Response {
 	p, err := process.CreateProcess(name, port, cwd, command)
 	if err != nil {
 		log.Printf("failed to create process '%s': %s", name, err)
-		return ErrResponse(fmt.Errorf("failed to create process '%s': %w", name, err))
+		return protocol.ErrResponse(fmt.Errorf("failed to create process '%s': %w", name, err))
 	}
 
 	err = p.Start(command)
 	if err != nil {
 		log.Printf("failed to start process '%s': %s", name, err)
-		return ErrResponse(fmt.Errorf("failed to start process '%s': %w", name, err))
+		return protocol.ErrResponse(fmt.Errorf("failed to start process '%s': %w", name, err))
 	}
 
 	mu.Lock()
@@ -79,7 +78,7 @@ func handleServe(args map[string]any) *Response {
 	mu.Unlock()
 	log.Printf("started '%s' on port %d", name, port)
 
-	sr := serveResponse{Name: name, Port: port}
+	sr := protocol.ServeResult{Name: name, Port: port}
 	if info, err := tunnel.GetTailscaleInfo(tunnel.DefaultRunner); err == nil {
 		sr.Hostname = info.Hostname
 		sr.IP = info.IP
@@ -89,69 +88,51 @@ func handleServe(args map[string]any) *Response {
 
 	data, err := json.Marshal(sr)
 	if err != nil {
-		return OkResponse(fmt.Sprintf("process '%s' started on port %d", name, port))
+		return protocol.OkResponse(fmt.Sprintf("process '%s' started on port %d", name, port))
 	}
-	return OkResponse(string(data))
+	return protocol.OkResponse(string(data))
 }
 
-func handleStop(args map[string]any) *Response {
+func handleStop(args map[string]any) *protocol.Response {
 	name, ok := args["name"].(string)
 	if !ok || name == "" {
-		return ErrResponse(fmt.Errorf("missing or invalid 'name' argument"))
+		return protocol.ErrResponse(fmt.Errorf("missing or invalid 'name' argument"))
 	}
 
 	mu.RLock()
 	p, exists := processes[name]
 	mu.RUnlock()
 	if !exists {
-		return ErrResponse(fmt.Errorf("process '%s' not found", name))
+		return protocol.ErrResponse(fmt.Errorf("process '%s' not found", name))
 	}
 
 	err := p.Stop()
 	if err != nil {
 		log.Printf("failed to stop process '%s': %s", name, err)
-		return ErrResponse(fmt.Errorf("failed to stop process '%s': %w", name, err))
+		return protocol.ErrResponse(fmt.Errorf("failed to stop process '%s': %w", name, err))
 	}
 
 	mu.Lock()
 	delete(processes, name)
 	mu.Unlock()
 	log.Printf("stopped '%s' (port %d)", name, p.Port)
-	return OkResponse(fmt.Sprintf("process '%s' stopped", name))
+	return protocol.OkResponse(fmt.Sprintf("process '%s' stopped", name))
 }
 
-type serveResponse struct {
-	Name     string `json:"name"`
-	Port     int    `json:"port"`
-	Hostname string `json:"hostname"`
-	IP       string `json:"ip"`
-}
-
-type listEntry struct {
-	Name string `json:"name"`
-	Port int    `json:"port"`
-}
-
-type listResponse struct {
-	Processes []listEntry `json:"processes"`
-	Hostname  string      `json:"hostname"`
-	IP        string      `json:"ip"`
-}
-
-func handleList(args map[string]any) *Response {
+func handleList(args map[string]any) *protocol.Response {
 	info, err := tunnel.GetTailscaleInfo(tunnel.DefaultRunner)
 	if err != nil {
-		return ErrResponse(err)
+		return protocol.ErrResponse(err)
 	}
 
 	mu.RLock()
-	entries := make([]listEntry, 0, len(processes))
+	entries := make([]protocol.ListEntry, 0, len(processes))
 	for _, v := range processes {
-		entries = append(entries, listEntry{Name: v.Name, Port: v.Port})
+		entries = append(entries, protocol.ListEntry{Name: v.Name, Port: v.Port})
 	}
 	mu.RUnlock()
 
-	lr := listResponse{
+	lr := protocol.ListResult{
 		Processes: entries,
 		Hostname:  info.Hostname,
 		IP:        info.IP,
@@ -159,23 +140,23 @@ func handleList(args map[string]any) *Response {
 
 	data, err := json.Marshal(lr)
 	if err != nil {
-		return ErrResponse(fmt.Errorf("failed to marshal process list: %w", err))
+		return protocol.ErrResponse(fmt.Errorf("failed to marshal process list: %w", err))
 	}
 
-	return OkResponse(string(data))
+	return protocol.OkResponse(string(data))
 }
 
-func handleLogs(args map[string]any) *Response {
+func handleLogs(args map[string]any) *protocol.Response {
 	name, ok := args["name"].(string)
 	if !ok || name == "" {
-		return ErrResponse(fmt.Errorf("missing or invalid 'name' argument"))
+		return protocol.ErrResponse(fmt.Errorf("missing or invalid 'name' argument"))
 	}
 
 	mu.RLock()
 	p, exists := processes[name]
 	mu.RUnlock()
 	if !exists {
-		return ErrResponse(fmt.Errorf("process '%s' not found", name))
+		return protocol.ErrResponse(fmt.Errorf("process '%s' not found", name))
 	}
 
 	lines := 50
@@ -191,61 +172,53 @@ func handleLogs(args map[string]any) *Response {
 	stdoutLines, err := util.LastNLines(stdoutPath, lines)
 	if err != nil {
 		log.Printf("failed to read stdout log: %s", err)
-		return ErrResponse(fmt.Errorf("failed to read stdout log: %w", err))
+		return protocol.ErrResponse(fmt.Errorf("failed to read stdout log: %w", err))
 	}
 
 	stderrLines, err := util.LastNLines(stderrPath, lines)
 	if err != nil {
 		log.Printf("failed to read stderr log: %s", err)
-		return ErrResponse(fmt.Errorf("failed to read stderr log: %w", err))
+		return protocol.ErrResponse(fmt.Errorf("failed to read stderr log: %w", err))
 	}
 
-	headerStyle := cli.Cyan
-	stderrStyle := cli.Red
-
-	var b strings.Builder
-	b.WriteString(headerStyle.Render("─── stdout ───"))
-	b.WriteString("\n")
-	for _, line := range stdoutLines {
-		b.WriteString(line)
-		b.WriteString("\n")
-	}
-	b.WriteString("\n")
-	b.WriteString(headerStyle.Render("─── stderr ───"))
-	b.WriteString("\n")
-	for _, line := range stderrLines {
-		b.WriteString(stderrStyle.Render(line))
-		b.WriteString("\n")
+	result := protocol.LogsResult{
+		Stdout: stdoutLines,
+		Stderr: stderrLines,
 	}
 
-	return OkResponse(strings.TrimRight(b.String(), "\n"))
+	data, err := json.Marshal(result)
+	if err != nil {
+		return protocol.ErrResponse(fmt.Errorf("failed to marshal logs: %w", err))
+	}
+
+	return protocol.OkResponse(string(data))
 }
 
-func handleGet(args map[string]any) *Response {
+func handleGet(args map[string]any) *protocol.Response {
 	name, ok := args["name"].(string)
 	if !ok || name == "" {
-		return ErrResponse(fmt.Errorf("missing or invalid 'name' argument"))
+		return protocol.ErrResponse(fmt.Errorf("missing or invalid 'name' argument"))
 	}
 
 	mu.RLock()
 	p, exists := processes[name]
 	mu.RUnlock()
 	if !exists {
-		return ErrResponse(fmt.Errorf("process '%s' not found", name))
+		return protocol.ErrResponse(fmt.Errorf("process '%s' not found", name))
 	}
 
-	// Return process info as JSON
-	info := map[string]any{
-		"name":    p.Name,
-		"port":    p.Port,
-		"command": p.Command,
-		"dir":     p.Dir,
+	// Return process info as structured data
+	info := protocol.ProcessInfo{
+		Name:    p.Name,
+		Port:    p.Port,
+		Command: p.Command,
+		Dir:     p.Dir,
 	}
 
 	data, err := json.Marshal(info)
 	if err != nil {
-		return ErrResponse(fmt.Errorf("failed to marshal process info: %w", err))
+		return protocol.ErrResponse(fmt.Errorf("failed to marshal process info: %w", err))
 	}
 
-	return OkResponse(string(data))
+	return protocol.OkResponse(string(data))
 }

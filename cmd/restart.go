@@ -3,6 +3,7 @@ package cmd
 import (
 	"devserve/cli"
 	"devserve/daemon"
+	"devserve/protocol"
 	"errors"
 	"fmt"
 
@@ -17,14 +18,14 @@ var restartCmd = &cobra.Command{
 		name := args[0]
 
 		// Stop the process
-		req := &daemon.Request{
+		req := &protocol.Request{
 			Action: "stop",
 			Args: map[string]any{
 				"name": name,
 			},
 		}
 		var (
-			resp *daemon.Response
+			resp *protocol.Response
 			err  error
 		)
 		cli.Spin("Stopping process...", func() {

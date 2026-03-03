@@ -3,7 +3,7 @@ package cmd
 import (
 	"devserve/cli"
 	"devserve/config"
-	"devserve/daemon"
+	"devserve/protocol"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -72,7 +72,7 @@ func init() {
 
 func runConfigSave(name string) error {
 	// Query daemon for process info
-	req := &daemon.Request{
+	req := &protocol.Request{
 		Action: "get",
 		Args: map[string]any{
 			"name": name,
@@ -88,7 +88,7 @@ func runConfigSave(name string) error {
 	}
 
 	// Parse the response
-	var data map[string]any
+	var data protocol.ProcessInfo
 	if err := json.Unmarshal([]byte(resp.Data), &data); err != nil {
 		return fmt.Errorf("failed to parse process info: %w", err)
 	}
@@ -96,23 +96,10 @@ func runConfigSave(name string) error {
 	// Extract process details
 	cfg := config.ProcessConfig{
 		Name:      name,
-		Directory: data["dir"].(string),
+		Port:      data.Port,
+		Command:   data.Command,
+		Directory: data.Dir,
 	}
-
-	// Handle port type
-	switch v := data["port"].(type) {
-	case float64:
-		cfg.Port = int(v)
-	case int:
-		cfg.Port = v
-	default:
-		return fmt.Errorf("invalid port type in process info")
-	}
-
-	// Command is stored in the Process struct but not currently tracked
-	// For now, we'll need to get it another way or store it differently
-	// This is a limitation of the current architecture
-	cfg.Command = data["command"].(string)
 
 	if err := config.SaveConfig(config.ConfigFile, cfg); err != nil {
 		return fmt.Errorf("failed to save config: %w", err)

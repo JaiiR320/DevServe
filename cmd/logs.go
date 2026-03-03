@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"devserve/daemon"
+	"devserve/protocol"
 	"errors"
 	"fmt"
 
@@ -14,7 +15,7 @@ var logsCmd = &cobra.Command{
 	Short: "Show process logs",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		lines, _ := cmd.Flags().GetInt("lines")
-		req := &daemon.Request{
+		req := &protocol.Request{
 			Action: "logs",
 			Args: map[string]any{
 				"name":  args[0],

@@ -3,6 +3,7 @@ package daemon_test
 import (
 	"devserve/config"
 	"devserve/daemon"
+	"devserve/protocol"
 	"errors"
 	"testing"
 )
@@ -12,7 +13,7 @@ func TestSendDaemonNotRunning(t *testing.T) {
 	config.Socket = "/tmp/devserve-test-nonexistent.sock"
 	t.Cleanup(func() { config.Socket = original })
 
-	_, err := daemon.Send(&daemon.Request{Action: "ping"})
+	_, err := daemon.Send(&protocol.Request{Action: "ping"})
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}

@@ -4,6 +4,7 @@ import (
 	"devserve/cli"
 	"devserve/config"
 	"devserve/process"
+	"devserve/protocol"
 	"errors"
 	"fmt"
 	"log"
@@ -70,7 +71,7 @@ func startInBackground() error {
 
 		// Wait a moment and verify daemon started with ping
 		time.Sleep(config.DaemonStartDelay)
-		pingReq := &Request{Action: "ping"}
+		pingReq := &protocol.Request{Action: "ping"}
 		resp, err := Send(pingReq)
 		if err != nil {
 			startErr = fmt.Errorf("failed to start daemon: %w", err)
@@ -145,7 +146,7 @@ func startForeground() error {
 }
 
 func Stop() (string, error) {
-	req := &Request{Action: "shutdown"}
+	req := &protocol.Request{Action: "shutdown"}
 	resp, err := Send(req)
 	if err != nil {
 		return "", fmt.Errorf("failed to send shutdown request: %w", err)
@@ -229,10 +230,10 @@ func stopAllProcesses(timeout time.Duration) []string {
 func HandleConn(conn net.Conn, stop chan struct{}) {
 	defer conn.Close()
 
-	req, err := ReadRequest(conn)
+	req, err := protocol.ReadRequest(conn)
 	if err != nil {
 		log.Printf("failed to read request: %s", err)
-		SendResponse(conn, ErrResponse(err))
+		protocol.SendResponse(conn, protocol.ErrResponse(err))
 		return
 	}
 
@@ -241,15 +242,15 @@ func HandleConn(conn net.Conn, stop chan struct{}) {
 		failed := stopAllProcesses(config.ShutdownTimeout)
 		if len(failed) > 0 {
 			msg := fmt.Sprintf("daemon stopping, failed to stop ports: %s", strings.Join(failed, ", "))
-			SendResponse(conn, OkResponse(msg))
+			protocol.SendResponse(conn, protocol.OkResponse(msg))
 		} else {
-			SendResponse(conn, OkResponse("daemon stopped, all processes terminated"))
+			protocol.SendResponse(conn, protocol.OkResponse("daemon stopped, all processes terminated"))
 		}
 		stop <- struct{}{}
 		return
 	}
 
-	var resp *Response
+	var resp *protocol.Response
 	switch req.Action {
 	case "ping":
 		resp = handlePing(req.Args)
@@ -264,8 +265,8 @@ func HandleConn(conn net.Conn, stop chan struct{}) {
 	case "get":
 		resp = handleGet(req.Args)
 	default:
-		resp = ErrResponse(fmt.Errorf("unknown action '%s'", req.Action))
+		resp = protocol.ErrResponse(fmt.Errorf("unknown action '%s'", req.Action))
 	}
 
-	SendResponse(conn, resp)
+	protocol.SendResponse(conn, resp)
 }
