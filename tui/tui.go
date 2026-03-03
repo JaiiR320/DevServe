@@ -105,6 +105,14 @@ func (m *model) moveCursor(delta int) {
 
 // -- layout --
 
+// Pane layout constants.
+const (
+	leftContentWidth       = 22 // content width for left pane
+	leftPaneBorderPadding  = 6  // borders/padding for left pane
+	rightPaneBorderPadding = 6  // borders/padding for right pane
+	minRightPaneWidth      = 30 // minimum width for right pane
+)
+
 // Pane border styles: rounded borders for both panes with minimal padding.
 var (
 	leftPaneStyle = lipgloss.NewStyle().
@@ -124,11 +132,10 @@ func (m model) View() string {
 	}
 
 	// Fixed left pane width, give rest to right pane
-	leftContentWidth := 22        // content width for left pane
-	leftW := leftContentWidth + 6 // +6 for borders/padding
-	rightW := m.width - leftW - 6 // -6 for right pane borders/padding only (no gap needed)
-	if rightW < 30 {
-		rightW = 30 // minimum right pane width
+	leftW := leftContentWidth + leftPaneBorderPadding
+	rightW := m.width - leftW - rightPaneBorderPadding
+	if rightW < minRightPaneWidth {
+		rightW = minRightPaneWidth
 	}
 
 	// Render pane contents first (without styling)

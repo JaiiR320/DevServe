@@ -4,7 +4,6 @@ import (
 	"devserve/cli"
 	"devserve/client"
 	"devserve/config"
-	"errors"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -52,20 +51,10 @@ var configDeleteCmd = &cobra.Command{
 	},
 }
 
-var configEditCmd = &cobra.Command{
-	Use:   "edit [name]",
-	Args:  cobra.ExactArgs(1),
-	Short: "Edit a saved configuration",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		return errors.New("edit not implemented")
-	},
-}
-
 func init() {
 	configCmd.AddCommand(configListCmd)
 	configCmd.AddCommand(configSaveCmd)
 	configCmd.AddCommand(configDeleteCmd)
-	configCmd.AddCommand(configEditCmd)
 	rootCmd.AddCommand(configCmd)
 }
 

@@ -5,8 +5,8 @@ import (
 	"devserve/client"
 	"devserve/config"
 	"devserve/protocol"
-	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -38,7 +38,7 @@ func runStart(name string) error {
 
 	if err != nil {
 		// Check if it's "already running" error
-		if errors.Is(err, errors.New("already")) {
+		if strings.Contains(err.Error(), "already in use") {
 			fmt.Println(cli.Info(fmt.Sprintf("process '%s' is already running", name)))
 			return nil
 		}

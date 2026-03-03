@@ -6,10 +6,26 @@ import (
 	"time"
 )
 
+// socketPath returns the appropriate socket path based on XDG_RUNTIME_DIR.
+func socketPath() string {
+	if runtimeDir := os.Getenv("XDG_RUNTIME_DIR"); runtimeDir != "" {
+		return filepath.Join(runtimeDir, "devserve.daemon.sock")
+	}
+	return "/tmp/devserve.daemon.sock"
+}
+
+// daemonDir returns the appropriate daemon directory based on XDG_RUNTIME_DIR.
+func daemonDir() string {
+	if runtimeDir := os.Getenv("XDG_RUNTIME_DIR"); runtimeDir != "" {
+		return filepath.Join(runtimeDir, "devserve")
+	}
+	return "/tmp/devserve"
+}
+
 // Paths
 var (
-	DaemonDir  = "/tmp/devserve"
-	Socket     = "/tmp/devserve.daemon.sock"
+	DaemonDir  = daemonDir()
+	Socket     = socketPath()
 	ConfigDir  = filepath.Join(os.Getenv("HOME"), ".config", "devserve")
 	ConfigFile = filepath.Join(ConfigDir, "config.json")
 )
