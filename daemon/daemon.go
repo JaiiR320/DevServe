@@ -1,6 +1,7 @@
 package daemon
 
 import (
+	"context"
 	"devserve/config"
 	"devserve/process"
 	"devserve/protocol"
@@ -70,7 +71,9 @@ func Run() error {
 	}
 
 	// Stop all running child processes before exiting
-	failed := stopAllProcesses(config.ShutdownTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), config.ShutdownTimeout)
+	defer cancel()
+	failed := stopAllProcesses(ctx)
 	if len(failed) > 0 {
 		log.Printf("failed to stop processes on ports: %s", strings.Join(failed, ", "))
 	}
@@ -80,7 +83,8 @@ func Run() error {
 }
 
 // stopAllProcesses stops all running child processes with retry logic.
-func stopAllProcesses(timeout time.Duration) []string {
+// It respects the context deadline for the overall shutdown operation.
+func stopAllProcesses(ctx context.Context) []string {
 	mu.Lock()
 	snapshot := make(map[string]*process.Process, len(processes))
 	for k, v := range processes {
@@ -105,12 +109,15 @@ func stopAllProcesses(timeout time.Duration) []string {
 	for name, p := range snapshot {
 		go func(name string, p *process.Process) {
 			err := p.Stop()
-			results <- result{name: name, port: p.Port, err: err, attempt: 1}
+			select {
+			case results <- result{name: name, port: p.Port, err: err, attempt: 1}:
+			case <-ctx.Done():
+				// Context cancelled, result dropped
+			}
 		}(name, p)
 	}
 
 	var failed []string
-	timer := time.After(timeout)
 	remaining := len(snapshot)
 
 	for remaining > 0 {
@@ -121,9 +128,17 @@ func stopAllProcesses(timeout time.Duration) []string {
 				if r.attempt < maxRetries {
 					p := snapshot[r.name]
 					go func(name string, p *process.Process, attempt int) {
-						time.Sleep(time.Duration(attempt) * 500 * time.Millisecond)
-						err := p.Stop()
-						results <- result{name: name, port: p.Port, err: err, attempt: attempt + 1}
+						select {
+						case <-ctx.Done():
+							// Don't retry if context cancelled
+							return
+						case <-time.After(time.Duration(attempt) * 500 * time.Millisecond):
+							err := p.Stop()
+							select {
+							case results <- result{name: name, port: p.Port, err: err, attempt: attempt + 1}:
+							case <-ctx.Done():
+							}
+						}
 					}(r.name, p, r.attempt)
 				} else {
 					remaining--
@@ -136,7 +151,8 @@ func stopAllProcesses(timeout time.Duration) []string {
 				delete(processes, r.name)
 				mu.Unlock()
 			}
-		case <-timer:
+		case <-ctx.Done():
+			// Context deadline exceeded, mark remaining as failed
 			mu.RLock()
 			for _, p := range processes {
 				failed = append(failed, fmt.Sprintf("%d", p.Port))
@@ -162,7 +178,9 @@ func handleConn(conn net.Conn, stop chan struct{}) {
 
 	if req.Action == "shutdown" {
 		log.Println("shutdown requested, stopping all processes")
-		failed := stopAllProcesses(config.ShutdownTimeout)
+		ctx, cancel := context.WithTimeout(context.Background(), config.ShutdownTimeout)
+		defer cancel()
+		failed := stopAllProcesses(ctx)
 		if len(failed) > 0 {
 			msg := fmt.Sprintf("daemon stopping, failed to stop ports: %s", strings.Join(failed, ", "))
 			protocol.SendResponse(conn, protocol.OkResponse(msg))

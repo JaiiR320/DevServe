@@ -1,6 +1,7 @@
 package daemon
 
 import (
+	"context"
 	"devserve/process"
 	"devserve/testutil"
 	"devserve/tunnel"
@@ -12,7 +13,9 @@ import (
 func TestStopAllProcessesEmpty(t *testing.T) {
 	resetState(t)
 
-	failed := stopAllProcesses(time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	failed := stopAllProcesses(ctx)
 	if failed != nil {
 		t.Errorf("expected nil for empty map, got %v", failed)
 	}
@@ -54,7 +57,9 @@ func TestStopAllProcessesRetriesTailscaleFailure(t *testing.T) {
 	processes["ui"] = p2
 	mu.Unlock()
 
-	failed := stopAllProcesses(10 * time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	failed := stopAllProcesses(ctx)
 
 	if len(failed) > 0 {
 		t.Errorf("expected all processes to stop successfully, but ports failed: %v", failed)

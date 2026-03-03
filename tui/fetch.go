@@ -3,6 +3,7 @@ package tui
 import (
 	"devserve/client"
 	"devserve/config"
+	"devserve/protocol"
 	"fmt"
 	"sort"
 )
@@ -16,9 +17,21 @@ func fetchItems() ([]listItem, error) {
 		return nil, fmt.Errorf("failed to list: %w", err)
 	}
 
+	// Load configs
+	configs, err := config.LoadConfigs(config.ConfigFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load configs: %w", err)
+	}
+
+	return buildItems(lr.Processes, lr.Hostname, lr.IP, configs), nil
+}
+
+// buildItems merges running processes with saved configurations into a unified list.
+// It takes pure data inputs (no I/O) making it easily testable.
+func buildItems(processes []protocol.ListEntry, hostname, ip string, configs []config.ProcessConfig) []listItem {
 	// Build map of running processes
-	runningProcs := make(map[string]processInfo, len(lr.Processes))
-	for _, e := range lr.Processes {
+	runningProcs := make(map[string]processInfo, len(processes))
+	for _, e := range processes {
 		info := processInfo{
 			Name:     e.Name,
 			Port:     e.Port,
@@ -26,20 +39,14 @@ func fetchItems() ([]listItem, error) {
 			Dir:      e.Dir,
 			LocalURL: fmt.Sprintf("http://localhost:%d", e.Port),
 		}
-		if lr.IP != "" {
-			info.IPURL = fmt.Sprintf("http://%s:%d", lr.IP, e.Port)
+		if ip != "" {
+			info.IPURL = fmt.Sprintf("http://%s:%d", ip, e.Port)
 		}
-		if lr.Hostname != "" {
-			info.DNSURL = fmt.Sprintf("https://%s:%d", lr.Hostname, e.Port)
+		if hostname != "" {
+			info.DNSURL = fmt.Sprintf("https://%s:%d", hostname, e.Port)
 		}
 
 		runningProcs[e.Name] = info
-	}
-
-	// Load configs
-	configs, err := config.LoadConfigs(config.ConfigFile)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load configs: %w", err)
 	}
 
 	// Build unified list
@@ -102,7 +109,7 @@ func fetchItems() ([]listItem, error) {
 	// Combine: configured first, then ephemeral
 	items = append(items, ephemeral...)
 
-	return items, nil
+	return items
 }
 
 // processInfo holds temporary process data during fetch
