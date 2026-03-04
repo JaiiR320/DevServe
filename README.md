@@ -17,7 +17,7 @@ go install github.com/jaiir320/devserve@latest
 
 **Download binary:**
 
-Grab the latest release from the [releases page](https://github.com/JaiiR320/DevServe/releases) and place it on your `PATH`.
+Grab the latest release from the [releases page](https://github.com/jaiir320/devserve/releases) and place it on your `PATH`.
 
 **Build from source:**
 
