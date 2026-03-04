@@ -23,7 +23,7 @@ Grab the latest release from the [releases page](https://github.com/jaiir320/dev
 
 ```bash
 git clone https://github.com/jaiir320/devserve.git
-cd DevServe
+cd devserve
 go build -o devserve .
 ```
 
