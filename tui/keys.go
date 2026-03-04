@@ -1,6 +1,6 @@
 package tui
 
-import "devserve/cli"
+import "github.com/jaiir320/devserve/cli"
 
 // renderHelp returns the bottom help bar string.
 func renderHelp() string {

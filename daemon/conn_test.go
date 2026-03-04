@@ -1,8 +1,8 @@
 package daemon
 
 import (
-	"devserve/process"
-	"devserve/protocol"
+	"github.com/jaiir320/devserve/process"
+	"github.com/jaiir320/devserve/protocol"
 	"net"
 	"strings"
 	"testing"

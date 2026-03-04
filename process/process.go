@@ -1,8 +1,8 @@
 package process
 
 import (
-	"devserve/config"
-	"devserve/tunnel"
+	"github.com/jaiir320/devserve/config"
+	"github.com/jaiir320/devserve/tunnel"
 	"fmt"
 	"log"
 	"os"

@@ -2,6 +2,31 @@
 
 Run dev servers and expose them over HTTPS via Tailscale. Logs go to files instead of your terminal, which is great for agentic coding workflows.
 
+## Prerequisites
+
+- Go 1.26+ (for installation from source)
+- [Tailscale](https://tailscale.com) installed and connected to a tailnet
+
+## Install
+
+**Go install:**
+
+```bash
+go install github.com/jaiir320/devserve@latest
+```
+
+**Download binary:**
+
+Grab the latest release from the [releases page](https://github.com/jaiir320/devserve/releases) and place it on your `PATH`.
+
+**Build from source:**
+
+```bash
+git clone https://github.com/jaiir320/devserve.git
+cd devserve
+go build -o devserve .
+```
+
 ## Usage
 
 ```bash
@@ -14,6 +39,9 @@ devserve list
 # view logs
 devserve logs myapp
 devserve logs myapp -n 100
+
+# restart a process from saved config
+devserve restart myapp
 
 # stop a process
 devserve stop myapp
@@ -35,7 +63,7 @@ devserve
 - `s` — save/remove from config
 - `q` — quit
 
-The left pane shows all processes: configured (top) and ephemeral (bottom). Green ● = running, gray ○ = stopped. The right pane shows details for the selected process.
+The left pane shows all processes: configured (top) and ephemeral (bottom). Green = running, gray = stopped. The right pane shows details for the selected process.
 
 ## Configuration
 
@@ -83,5 +111,3 @@ Daemon logs:
 ## How It Works
 
 A background daemon listens on a Unix socket at `/tmp/devserve.daemon.sock`. When you run `devserve serve`, it starts your command, redirects output to log files, waits for the port to be ready, then runs `tailscale serve` to expose it over HTTPS. Stopping a process kills the process tree and tears down the Tailscale proxy.
-
-Requires [Tailscale](https://tailscale.com) installed and connected to a tailnet.

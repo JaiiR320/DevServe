@@ -1,7 +1,7 @@
 package tunnel_test
 
 import (
-	"devserve/tunnel"
+	"github.com/jaiir320/devserve/tunnel"
 	"fmt"
 	"testing"
 )

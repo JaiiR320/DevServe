@@ -1,7 +1,7 @@
 package main
 
 import (
-	"devserve/cmd"
+	"github.com/jaiir320/devserve/cmd"
 )
 
 func main() {

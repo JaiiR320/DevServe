@@ -1,4 +1,4 @@
-module devserve
+module github.com/jaiir320/devserve
 
 go 1.26.0
 

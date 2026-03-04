@@ -1,10 +1,10 @@
 package cmd
 
 import (
-	"devserve/cli"
-	"devserve/client"
-	"devserve/config"
-	"devserve/daemon"
+	"github.com/jaiir320/devserve/cli"
+	"github.com/jaiir320/devserve/client"
+	"github.com/jaiir320/devserve/config"
+	"github.com/jaiir320/devserve/daemon"
 	"fmt"
 	"os"
 	"path/filepath"

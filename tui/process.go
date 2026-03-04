@@ -1,7 +1,7 @@
 package tui
 
 import (
-	"devserve/cli"
+	"github.com/jaiir320/devserve/cli"
 	"fmt"
 	"strings"
 

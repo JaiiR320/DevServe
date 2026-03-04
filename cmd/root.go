@@ -1,8 +1,8 @@
 package cmd
 
 import (
-	"devserve/cli"
-	"devserve/tui"
+	"github.com/jaiir320/devserve/cli"
+	"github.com/jaiir320/devserve/tui"
 	"fmt"
 	"os"
 

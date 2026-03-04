@@ -1,8 +1,8 @@
 package client
 
 import (
-	"devserve/config"
-	"devserve/protocol"
+	"github.com/jaiir320/devserve/config"
+	"github.com/jaiir320/devserve/protocol"
 	"errors"
 	"fmt"
 	"net"

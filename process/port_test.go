@@ -1,8 +1,8 @@
 package process_test
 
 import (
-	"devserve/process"
-	"devserve/testutil"
+	"github.com/jaiir320/devserve/process"
+	"github.com/jaiir320/devserve/testutil"
 	"fmt"
 	"net"
 	"strings"
