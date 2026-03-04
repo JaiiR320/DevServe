@@ -2,9 +2,9 @@ package daemon
 
 import (
 	"context"
-	"devserve/process"
-	"devserve/testutil"
-	"devserve/tunnel"
+	"github.com/jaiir320/devserve/process"
+	"github.com/jaiir320/devserve/testutil"
+	"github.com/jaiir320/devserve/tunnel"
 	"fmt"
 	"testing"
 	"time"

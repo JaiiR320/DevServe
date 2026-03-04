@@ -1,7 +1,7 @@
 package process
 
 import (
-	"devserve/config"
+	"github.com/jaiir320/devserve/config"
 	"fmt"
 	"net"
 	"strconv"

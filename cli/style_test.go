@@ -1,8 +1,8 @@
 package cli_test
 
 import (
-	"devserve/cli"
-	"devserve/protocol"
+	"github.com/jaiir320/devserve/cli"
+	"github.com/jaiir320/devserve/protocol"
 	"strings"
 	"testing"
 )

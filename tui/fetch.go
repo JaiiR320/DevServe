@@ -1,9 +1,9 @@
 package tui
 
 import (
-	"devserve/client"
-	"devserve/config"
-	"devserve/protocol"
+	"github.com/jaiir320/devserve/client"
+	"github.com/jaiir320/devserve/config"
+	"github.com/jaiir320/devserve/protocol"
 	"fmt"
 	"sort"
 )

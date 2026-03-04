@@ -1,9 +1,9 @@
 package cmd
 
 import (
-	"devserve/cli"
-	"devserve/client"
-	"devserve/protocol"
+	"github.com/jaiir320/devserve/cli"
+	"github.com/jaiir320/devserve/client"
+	"github.com/jaiir320/devserve/protocol"
 	"fmt"
 	"os"
 	"strconv"

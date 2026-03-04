@@ -1,10 +1,10 @@
 package process_test
 
 import (
-	"devserve/config"
-	"devserve/process"
-	"devserve/testutil"
-	"devserve/tunnel"
+	"github.com/jaiir320/devserve/config"
+	"github.com/jaiir320/devserve/process"
+	"github.com/jaiir320/devserve/testutil"
+	"github.com/jaiir320/devserve/tunnel"
 	"fmt"
 	"os"
 	"path/filepath"

@@ -1,11 +1,11 @@
 package daemon
 
 import (
-	"devserve/config"
-	"devserve/process"
-	"devserve/protocol"
-	"devserve/testutil"
-	"devserve/tunnel"
+	"github.com/jaiir320/devserve/config"
+	"github.com/jaiir320/devserve/process"
+	"github.com/jaiir320/devserve/protocol"
+	"github.com/jaiir320/devserve/testutil"
+	"github.com/jaiir320/devserve/tunnel"
 	"encoding/json"
 	"fmt"
 	"os"

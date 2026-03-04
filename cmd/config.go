@@ -1,9 +1,9 @@
 package cmd
 
 import (
-	"devserve/cli"
-	"devserve/client"
-	"devserve/config"
+	"github.com/jaiir320/devserve/cli"
+	"github.com/jaiir320/devserve/client"
+	"github.com/jaiir320/devserve/config"
 	"fmt"
 
 	"github.com/spf13/cobra"

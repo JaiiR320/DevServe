@@ -2,9 +2,9 @@ package daemon
 
 import (
 	"context"
-	"devserve/config"
-	"devserve/process"
-	"devserve/protocol"
+	"github.com/jaiir320/devserve/config"
+	"github.com/jaiir320/devserve/process"
+	"github.com/jaiir320/devserve/protocol"
 	"errors"
 	"fmt"
 	"log"
