@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/jaiir320/devserve/protocol"
 )
 
 func TestModelRestartSelectedRunningItems(t *testing.T) {
@@ -51,18 +52,17 @@ func TestModelRestartSelectedRunningItems(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var (
-				stoppedName string
-				startedItem listItem
+				restartedName string
 			)
 
 			setTestDeps(t,
 				func() ([]listItem, error) { return tt.reloadItems, nil },
-				func(name string) error {
-					stoppedName = name
+				func(name string) error { return nil },
+				func(item listItem) error {
 					return nil
 				},
-				func(item listItem) error {
-					startedItem = item
+				func(name string) error {
+					restartedName = name
 					return nil
 				},
 			)
@@ -76,11 +76,8 @@ func TestModelRestartSelectedRunningItems(t *testing.T) {
 
 			got, _ := m.restartSelected()
 
-			if stoppedName != tt.item.Name {
-				t.Fatalf("stop called with %q, want %q", stoppedName, tt.item.Name)
-			}
-			if startedItem != tt.item {
-				t.Fatalf("start called with %+v, want %+v", startedItem, tt.item)
+			if restartedName != tt.item.Name {
+				t.Fatalf("restart called with %q, want %q", restartedName, tt.item.Name)
 			}
 			if got.statusMsg != "process '"+tt.item.Name+"' restarted" {
 				t.Fatalf("status message = %q, want restart success", got.statusMsg)
@@ -130,6 +127,7 @@ func TestModelRestartSelectedStartsStoppedConfiguredItem(t *testing.T) {
 			startedItem = got
 			return nil
 		},
+		func(name string) error { return nil },
 	)
 
 	m := model{
@@ -165,15 +163,14 @@ func TestModelRestartSelectedStartsStoppedConfiguredItem(t *testing.T) {
 func TestModelRestartSelectedFailure(t *testing.T) {
 	setTestDeps(t,
 		func() ([]listItem, error) {
-			t.Fatal("fetchItems should not be called on restart failure")
-			return nil, nil
+			return []listItem{{Name: "web", Running: false}}, nil
+		},
+		func(name string) error { return nil },
+		func(item listItem) error {
+			return nil
 		},
 		func(name string) error {
-			return errors.New("daemon unavailable")
-		},
-		func(item listItem) error {
-			t.Fatal("startItem should not be called when stop fails")
-			return nil
+			return errors.New("failed to start: port 4096 is already in use")
 		},
 	)
 
@@ -181,11 +178,14 @@ func TestModelRestartSelectedFailure(t *testing.T) {
 
 	got, _ := m.restartSelected()
 
-	if got.statusMsg != "failed to restart 'web': stop: daemon unavailable" {
+	if got.statusMsg != "failed to restart 'web': failed to start: port 4096 is already in use" {
 		t.Fatalf("status message = %q", got.statusMsg)
 	}
 	if !got.statusErr {
 		t.Fatal("statusErr = false, want true")
+	}
+	if len(got.items) != 1 || got.items[0].Running {
+		t.Fatalf("items after failed restart = %+v, want stopped item", got.items)
 	}
 }
 
@@ -202,6 +202,7 @@ func TestModelRestartSelectedStoppedConfiguredFailure(t *testing.T) {
 		func(item listItem) error {
 			return errors.New("daemon unavailable")
 		},
+		func(name string) error { return nil },
 	)
 
 	m := model{items: []listItem{{Name: "api", Running: false, Configured: true}}}
@@ -223,6 +224,7 @@ func TestModelUpdateRestartKey(t *testing.T) {
 		},
 		func(name string) error { return nil },
 		func(item listItem) error { return nil },
+		func(name string) error { return nil },
 	)
 
 	m := model{items: []listItem{{Name: "web", Running: true}}}
@@ -244,20 +246,28 @@ func TestRenderHelpIncludesRestart(t *testing.T) {
 	}
 }
 
-func setTestDeps(t *testing.T, fetch func() ([]listItem, error), stop func(string) error, start func(listItem) error) {
+func setTestDeps(t *testing.T, fetch func() ([]listItem, error), stop func(string) error, start func(listItem) error, restart func(string) error) {
 	t.Helper()
 
 	oldFetch := fetchItemsFunc
 	oldStop := stopProcessFunc
 	oldStart := startItemFunc
+	oldRestart := restartFunc
 
 	fetchItemsFunc = fetch
 	stopProcessFunc = stop
 	startItemFunc = start
+	restartFunc = func(name string) (*protocol.ServeResult, error) {
+		if err := restart(name); err != nil {
+			return nil, err
+		}
+		return &protocol.ServeResult{Name: name}, nil
+	}
 
 	t.Cleanup(func() {
 		fetchItemsFunc = oldFetch
 		stopProcessFunc = oldStop
 		startItemFunc = oldStart
+		restartFunc = oldRestart
 	})
 }

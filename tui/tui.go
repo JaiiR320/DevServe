@@ -35,6 +35,7 @@ var (
 	fetchItemsFunc  = fetchItems
 	stopProcessFunc = stopProcess
 	startItemFunc   = startItem
+	restartFunc     = client.Restart
 )
 
 // Run launches the TUI. It ensures the daemon is running, fetches the
@@ -303,7 +304,7 @@ func (m model) restartSelected() (model, tea.Cmd) {
 	if err := restartItem(item); err != nil {
 		m.statusMsg = fmt.Sprintf("failed to restart '%s': %s", item.Name, err)
 		m.statusErr = true
-		return m, nil
+		return m.reloadSelected(item.Name)
 	}
 
 	m.statusMsg = fmt.Sprintf("process '%s' restarted", item.Name)
@@ -312,11 +313,9 @@ func (m model) restartSelected() (model, tea.Cmd) {
 }
 
 func restartItem(item listItem) error {
-	if err := stopProcessFunc(item.Name); err != nil {
-		return fmt.Errorf("stop: %w", err)
-	}
-	if err := startItemFunc(item); err != nil {
-		return fmt.Errorf("start: %w", err)
+	_, err := restartFunc(item.Name)
+	if err != nil {
+		return err
 	}
 	return nil
 }

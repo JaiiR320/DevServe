@@ -1,8 +1,8 @@
 package process
 
 import (
-	"github.com/jaiir320/devserve/config"
 	"fmt"
+	"github.com/jaiir320/devserve/config"
 	"net"
 	"strconv"
 	"time"
@@ -29,6 +29,21 @@ func WaitForPort(port int, timeout time.Duration) error {
 			conn, err := net.DialTimeout("tcp", addr, config.PortDialTimeout)
 			if err == nil {
 				conn.Close()
+				return nil
+			}
+			time.Sleep(config.PortPollInterval)
+		}
+	}
+}
+
+func WaitForPortFree(port int, timeout time.Duration) error {
+	deadline := time.After(timeout)
+	for {
+		select {
+		case <-deadline:
+			return fmt.Errorf("port %d still in use after %s", port, timeout)
+		default:
+			if err := CheckPortInUse(port); err == nil {
 				return nil
 			}
 			time.Sleep(config.PortPollInterval)
