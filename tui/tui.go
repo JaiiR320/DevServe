@@ -283,6 +283,18 @@ func (m model) restartSelected() (model, tea.Cmd) {
 
 	item := m.items[m.cursor]
 	if !item.Running {
+		if item.Configured {
+			if err := startItemFunc(item); err != nil {
+				m.statusMsg = fmt.Sprintf("failed to start '%s': %s", item.Name, err)
+				m.statusErr = true
+				return m, nil
+			}
+
+			m.statusMsg = fmt.Sprintf("process '%s' started", item.Name)
+			m.statusErr = false
+			return m.reloadSelected(item.Name)
+		}
+
 		m.statusMsg = fmt.Sprintf("cannot restart '%s': process is not running", item.Name)
 		m.statusErr = true
 		return m, nil

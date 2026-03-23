@@ -101,6 +101,67 @@ func TestModelRestartSelectedRunningItems(t *testing.T) {
 	}
 }
 
+func TestModelRestartSelectedStartsStoppedConfiguredItem(t *testing.T) {
+	var (
+		stopCalls   int
+		startedItem listItem
+	)
+
+	item := listItem{
+		Name:       "api",
+		Port:       4000,
+		Command:    "go run ./cmd/api",
+		Dir:        "/srv/api",
+		Configured: true,
+	}
+
+	reloadItems := []listItem{
+		{Name: "web", Port: 3000, Running: true, Configured: true},
+		{Name: "api", Port: 4000, Command: "go run ./cmd/api", Dir: "/srv/api", Running: true, Configured: true},
+	}
+
+	setTestDeps(t,
+		func() ([]listItem, error) { return reloadItems, nil },
+		func(name string) error {
+			stopCalls++
+			return nil
+		},
+		func(got listItem) error {
+			startedItem = got
+			return nil
+		},
+	)
+
+	m := model{
+		items: []listItem{
+			{Name: "web", Port: 3000, Running: true, Configured: true},
+			item,
+		},
+		cursor: 1,
+	}
+
+	got, _ := m.restartSelected()
+
+	if stopCalls != 0 {
+		t.Fatalf("stop called %d times, want 0", stopCalls)
+	}
+	if startedItem != item {
+		t.Fatalf("start called with %+v, want %+v", startedItem, item)
+	}
+	if got.statusMsg != "process 'api' started" {
+		t.Fatalf("status message = %q, want start success", got.statusMsg)
+	}
+	if got.statusErr {
+		t.Fatal("statusErr = true, want false")
+	}
+	if got.cursor != 1 {
+		t.Fatalf("cursor = %d, want 1", got.cursor)
+	}
+	if got.items[got.cursor].Name != item.Name {
+		t.Fatalf("selected item after reload = %q, want %q", got.items[got.cursor].Name, item.Name)
+	}
+}
+
 func TestModelRestartSelectedFailure(t *testing.T) {
 	setTestDeps(t,
 		func() ([]listItem, error) {
@@ -121,6 +182,33 @@ func TestModelRestartSelectedFailure(t *testing.T) {
 	got, _ := m.restartSelected()
 
 	if got.statusMsg != "failed to restart 'web': stop: daemon unavailable" {
+		t.Fatalf("status message = %q", got.statusMsg)
+	}
+	if !got.statusErr {
+		t.Fatal("statusErr = false, want true")
+	}
+}
+
+func TestModelRestartSelectedStoppedConfiguredFailure(t *testing.T) {
+	setTestDeps(t,
+		func() ([]listItem, error) {
+			t.Fatal("fetchItems should not be called on start failure")
+			return nil, nil
+		},
+		func(name string) error {
+			t.Fatal("stopProcess should not be called for stopped configured item")
+			return nil
+		},
+		func(item listItem) error {
+			return errors.New("daemon unavailable")
+		},
+	)
+
+	m := model{items: []listItem{{Name: "api", Running: false, Configured: true}}}
+
+	got, _ := m.restartSelected()
+
+	if got.statusMsg != "failed to start 'api': daemon unavailable" {
 		t.Fatalf("status message = %q", got.statusMsg)
 	}
 	if !got.statusErr {
