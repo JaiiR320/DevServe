@@ -16,29 +16,23 @@ var restartCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		name := args[0]
 
-		// Capture live process info before stopping
-		info, err := client.Get(name)
-		if err != nil {
-			return fmt.Errorf("failed to query process '%s': %w", name, err)
-		}
-
-		cli.Spin("Stopping process...", func() {
-			err = client.Stop(name)
+		var (
+			result any
+			err    error
+		)
+		cli.Spin(fmt.Sprintf("Restarting '%s'...", name), func() {
+			result, err = client.Restart(name)
 		})
 		if err != nil {
-			return fmt.Errorf("failed to stop: %w", err)
+			return err
 		}
 
-		// Re-serve using captured live state
-		var result *protocol.ServeResult
-		cli.Spin(fmt.Sprintf("Starting '%s'...", name), func() {
-			result, err = client.Serve(info.Name, info.Port, info.Command, info.Dir)
-		})
-		if err != nil {
-			return fmt.Errorf("failed to start: %w", err)
+		sr, ok := result.(*protocol.ServeResult)
+		if !ok {
+			return fmt.Errorf("failed to restart '%s': invalid restart result", name)
 		}
 
-		fmt.Println(cli.RenderServeResult(result))
+		fmt.Println(cli.RenderServeResult(sr))
 		return nil
 	},
 }

@@ -1,9 +1,9 @@
 package tui
 
 import (
+	"fmt"
 	"github.com/jaiir320/devserve/cli"
 	"github.com/jaiir320/devserve/client"
-	"fmt"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -31,13 +31,20 @@ type model struct {
 	statusErr bool
 }
 
+var (
+	fetchItemsFunc  = fetchItems
+	stopProcessFunc = stopProcess
+	startItemFunc   = startItem
+	restartFunc     = client.Restart
+)
+
 // Run launches the TUI. It ensures the daemon is running, fetches the
 // initial data, and starts the bubbletea program.
 func Run() error {
 	// Ensure daemon is running (ignore "already running" error)
 	_ = client.StartDaemon()
 
-	items, err := fetchItems()
+	items, err := fetchItemsFunc()
 	if err != nil {
 		items = nil
 	}
@@ -83,6 +90,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "s":
 			return m.toggleSave()
+
+		case "r":
+			return m.restartSelected()
 		}
 	}
 	return m, nil
@@ -199,7 +209,7 @@ func (m model) toggleStartStop() (model, tea.Cmd) {
 
 	if item.Running {
 		// Stop the process
-		err := stopProcess(item.Name)
+		err := stopProcessFunc(item.Name)
 		if err != nil {
 			m.statusMsg = fmt.Sprintf("failed to stop '%s': %s", item.Name, err)
 			m.statusErr = true
@@ -214,7 +224,7 @@ func (m model) toggleStartStop() (model, tea.Cmd) {
 			m.statusErr = true
 			return m, nil
 		}
-		err := startItem(item)
+		err := startItemFunc(item)
 		if err != nil {
 			m.statusMsg = fmt.Sprintf("failed to start '%s': %s", item.Name, err)
 			m.statusErr = true
@@ -225,7 +235,7 @@ func (m model) toggleStartStop() (model, tea.Cmd) {
 	}
 
 	// Reload data to reflect changes
-	return m.reload()
+	return m.reloadSelected(item.Name)
 }
 
 func (m model) toggleSave() (model, tea.Cmd) {
@@ -258,12 +268,60 @@ func (m model) toggleSave() (model, tea.Cmd) {
 	}
 
 	// Reload data to reflect changes
-	return m.reload()
+	return m.reloadSelected(item.Name)
 }
 
 // reload refreshes the data from daemon and config.
 func (m model) reload() (model, tea.Cmd) {
-	items, err := fetchItems()
+	selectedName := m.selectedItemName()
+	return m.reloadSelected(selectedName)
+}
+
+func (m model) restartSelected() (model, tea.Cmd) {
+	if len(m.items) == 0 {
+		return m, nil
+	}
+
+	item := m.items[m.cursor]
+	if !item.Running {
+		if item.Configured {
+			if err := startItemFunc(item); err != nil {
+				m.statusMsg = fmt.Sprintf("failed to start '%s': %s", item.Name, err)
+				m.statusErr = true
+				return m, nil
+			}
+
+			m.statusMsg = fmt.Sprintf("process '%s' started", item.Name)
+			m.statusErr = false
+			return m.reloadSelected(item.Name)
+		}
+
+		m.statusMsg = fmt.Sprintf("cannot restart '%s': process is not running", item.Name)
+		m.statusErr = true
+		return m, nil
+	}
+
+	if err := restartItem(item); err != nil {
+		m.statusMsg = fmt.Sprintf("failed to restart '%s': %s", item.Name, err)
+		m.statusErr = true
+		return m.reloadSelected(item.Name)
+	}
+
+	m.statusMsg = fmt.Sprintf("process '%s' restarted", item.Name)
+	m.statusErr = false
+	return m.reloadSelected(item.Name)
+}
+
+func restartItem(item listItem) error {
+	_, err := restartFunc(item.Name)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (m model) reloadSelected(selectedName string) (model, tea.Cmd) {
+	items, err := fetchItemsFunc()
 	if err != nil {
 		m.statusMsg = fmt.Sprintf("failed to reload: %s", err)
 		m.statusErr = true
@@ -282,11 +340,25 @@ func (m model) reload() (model, tea.Cmd) {
 		m.cursor = 0
 	}
 
-	// If cursor changed dramatically, try to find the same item by name
+	if selectedName != "" {
+		for i, item := range m.items {
+			if item.Name == selectedName {
+				m.cursor = i
+				return m, nil
+			}
+		}
+	}
+
 	if oldCursor < len(m.items) && oldCursor >= 0 {
-		// Cursor is still valid, keep it
 		m.cursor = oldCursor
 	}
 
 	return m, nil
+}
+
+func (m model) selectedItemName() string {
+	if len(m.items) == 0 || m.cursor < 0 || m.cursor >= len(m.items) {
+		return ""
+	}
+	return m.items[m.cursor].Name
 }

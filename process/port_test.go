@@ -1,9 +1,9 @@
 package process_test
 
 import (
+	"fmt"
 	"github.com/jaiir320/devserve/process"
 	"github.com/jaiir320/devserve/testutil"
-	"fmt"
 	"net"
 	"strings"
 	"testing"
@@ -85,6 +85,56 @@ func TestWaitForPortTimeout(t *testing.T) {
 		t.Errorf("expected error to contain %q, got %q", "not ready after", err.Error())
 	}
 	// Should not take much longer than the timeout
+	if elapsed > 2*time.Second {
+		t.Errorf("timeout took too long: %s", elapsed)
+	}
+}
+
+func TestWaitForPortFreeDelayed(t *testing.T) {
+	listener, err := net.Listen("tcp", "localhost:0")
+	if err != nil {
+		t.Fatalf("failed to occupy port: %v", err)
+	}
+	defer listener.Close()
+
+	port := listener.Addr().(*net.TCPAddr).Port
+
+	go func() {
+		time.Sleep(200 * time.Millisecond)
+		listener.Close()
+	}()
+
+	start := time.Now()
+	err = process.WaitForPortFree(port, 3*time.Second)
+	elapsed := time.Since(start)
+
+	if err != nil {
+		t.Fatalf("expected port to become free, got %v", err)
+	}
+	if elapsed < 150*time.Millisecond {
+		t.Errorf("expected wait for port release, took %s", elapsed)
+	}
+}
+
+func TestWaitForPortFreeTimeout(t *testing.T) {
+	listener, err := net.Listen("tcp", "localhost:0")
+	if err != nil {
+		t.Fatalf("failed to occupy port: %v", err)
+	}
+	defer listener.Close()
+
+	port := listener.Addr().(*net.TCPAddr).Port
+
+	start := time.Now()
+	err = process.WaitForPortFree(port, 300*time.Millisecond)
+	elapsed := time.Since(start)
+
+	if err == nil {
+		t.Fatal("expected timeout error, got nil")
+	}
+	if !strings.Contains(err.Error(), "still in use after") {
+		t.Errorf("expected error to contain %q, got %q", "still in use after", err.Error())
+	}
 	if elapsed > 2*time.Second {
 		t.Errorf("timeout took too long: %s", elapsed)
 	}
