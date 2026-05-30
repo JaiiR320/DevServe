@@ -239,10 +239,231 @@ func TestModelUpdateRestartKey(t *testing.T) {
 	}
 }
 
+func TestModelUpdateOpenKey(t *testing.T) {
+	var openedURL string
+	setOpenCopyDeps(t,
+		func(url string) error {
+			openedURL = url
+			return nil
+		},
+		func(url string) error { return nil },
+	)
+
+	m := model{items: []listItem{{Name: "web", Running: true, LocalURL: "http://localhost:3000"}}}
+
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'o'}})
+	got, ok := updated.(model)
+	if !ok {
+		t.Fatalf("updated model type = %T, want tui.model", updated)
+	}
+	if openedURL != "http://localhost:3000" {
+		t.Fatalf("opened URL = %q, want local URL", openedURL)
+	}
+	if got.statusMsg != "opened http://localhost:3000" {
+		t.Fatalf("status message = %q, want open success", got.statusMsg)
+	}
+	if got.statusErr {
+		t.Fatal("statusErr = true, want false")
+	}
+}
+
+func TestModelOpenSelectedLocalURLFailure(t *testing.T) {
+	tests := []struct {
+		name       string
+		item       listItem
+		openErr    error
+		wantStatus string
+	}{
+		{
+			name:       "stopped process",
+			item:       listItem{Name: "web", Running: false, LocalURL: "http://localhost:3000"},
+			wantStatus: "cannot open 'web': process is not running",
+		},
+		{
+			name:       "missing local URL",
+			item:       listItem{Name: "web", Running: true},
+			wantStatus: "cannot open 'web': no local URL available",
+		},
+		{
+			name:       "opener failure",
+			item:       listItem{Name: "web", Running: true, LocalURL: "http://localhost:3000"},
+			openErr:    errors.New("browser unavailable"),
+			wantStatus: "failed to open 'web': browser unavailable",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			openCalls := 0
+			setOpenCopyDeps(t,
+				func(url string) error {
+					openCalls++
+					return tt.openErr
+				},
+				func(url string) error { return nil },
+			)
+
+			got, _ := (model{items: []listItem{tt.item}}).openSelectedLocalURL()
+
+			if got.statusMsg != tt.wantStatus {
+				t.Fatalf("status message = %q, want %q", got.statusMsg, tt.wantStatus)
+			}
+			if !got.statusErr {
+				t.Fatal("statusErr = false, want true")
+			}
+			if !tt.item.Running || tt.item.LocalURL == "" {
+				if openCalls != 0 {
+					t.Fatalf("open called %d times, want 0", openCalls)
+				}
+			} else if openCalls != 1 {
+				t.Fatalf("open called %d times, want 1", openCalls)
+			}
+		})
+	}
+}
+
+func TestModelUpdateCopyKey(t *testing.T) {
+	var copiedURL string
+	setOpenCopyDeps(t,
+		func(url string) error { return nil },
+		func(url string) error {
+			copiedURL = url
+			return nil
+		},
+	)
+
+	m := model{items: []listItem{{
+		Name:    "web",
+		Running: true,
+		IPURL:   "http://100.64.0.1:3000",
+		DNSURL:  "https://host.tailnet.ts.net:3000",
+	}}}
+
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'c'}})
+	got, ok := updated.(model)
+	if !ok {
+		t.Fatalf("updated model type = %T, want tui.model", updated)
+	}
+	if copiedURL != "https://host.tailnet.ts.net:3000" {
+		t.Fatalf("copied URL = %q, want DNS URL", copiedURL)
+	}
+	if got.statusMsg != "copied https://host.tailnet.ts.net:3000" {
+		t.Fatalf("status message = %q, want copy success", got.statusMsg)
+	}
+	if got.statusErr {
+		t.Fatal("statusErr = true, want false")
+	}
+}
+
+func TestModelCopySelectedTailscaleURLFallbackAndFailure(t *testing.T) {
+	tests := []struct {
+		name       string
+		item       listItem
+		copyErr    error
+		wantCopied string
+		wantStatus string
+		wantErr    bool
+	}{
+		{
+			name:       "falls back to IP URL",
+			item:       listItem{Name: "web", Running: true, IPURL: "http://100.64.0.1:3000"},
+			wantCopied: "http://100.64.0.1:3000",
+			wantStatus: "copied http://100.64.0.1:3000",
+		},
+		{
+			name:       "stopped process",
+			item:       listItem{Name: "web", Running: false, DNSURL: "https://host.tailnet.ts.net:3000"},
+			wantStatus: "cannot copy URL for 'web': process is not running",
+			wantErr:    true,
+		},
+		{
+			name:       "missing tailscale URL",
+			item:       listItem{Name: "web", Running: true},
+			wantStatus: "cannot copy URL for 'web': no Tailscale URL available",
+			wantErr:    true,
+		},
+		{
+			name:       "copy failure",
+			item:       listItem{Name: "web", Running: true, DNSURL: "https://host.tailnet.ts.net:3000"},
+			copyErr:    errors.New("clipboard unavailable"),
+			wantCopied: "https://host.tailnet.ts.net:3000",
+			wantStatus: "failed to copy URL for 'web': clipboard unavailable",
+			wantErr:    true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var copiedURL string
+			setOpenCopyDeps(t,
+				func(url string) error { return nil },
+				func(url string) error {
+					copiedURL = url
+					return tt.copyErr
+				},
+			)
+
+			got, _ := (model{items: []listItem{tt.item}}).copySelectedTailscaleURL()
+
+			if copiedURL != tt.wantCopied {
+				t.Fatalf("copied URL = %q, want %q", copiedURL, tt.wantCopied)
+			}
+			if got.statusMsg != tt.wantStatus {
+				t.Fatalf("status message = %q, want %q", got.statusMsg, tt.wantStatus)
+			}
+			if got.statusErr != tt.wantErr {
+				t.Fatalf("statusErr = %v, want %v", got.statusErr, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestSelectedTailscaleURL(t *testing.T) {
+	tests := []struct {
+		name string
+		item listItem
+		want string
+	}{
+		{
+			name: "prefers DNS URL",
+			item: listItem{IPURL: "http://100.64.0.1:3000", DNSURL: "https://host.tailnet.ts.net:3000"},
+			want: "https://host.tailnet.ts.net:3000",
+		},
+		{
+			name: "falls back to IP URL",
+			item: listItem{IPURL: "http://100.64.0.1:3000"},
+			want: "http://100.64.0.1:3000",
+		},
+		{
+			name: "empty without tailscale URL",
+			item: listItem{},
+			want: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := selectedTailscaleURL(tt.item); got != tt.want {
+				t.Fatalf("selected URL = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestRenderHelpIncludesRestart(t *testing.T) {
 	help := renderHelp()
 	if !strings.Contains(help, "r restart") {
 		t.Fatalf("help text = %q, want restart hotkey", help)
+	}
+}
+
+func TestRenderHelpIncludesOpenAndCopy(t *testing.T) {
+	help := renderHelp()
+	if !strings.Contains(help, "o open") {
+		t.Fatalf("help text = %q, want open hotkey", help)
+	}
+	if !strings.Contains(help, "c copy") {
+		t.Fatalf("help text = %q, want copy hotkey", help)
 	}
 }
 
@@ -269,5 +490,20 @@ func setTestDeps(t *testing.T, fetch func() ([]listItem, error), stop func(strin
 		stopProcessFunc = oldStop
 		startItemFunc = oldStart
 		restartFunc = oldRestart
+	})
+}
+
+func setOpenCopyDeps(t *testing.T, open func(string) error, copy func(string) error) {
+	t.Helper()
+
+	oldOpen := openURLFunc
+	oldCopy := copyURLFunc
+
+	openURLFunc = open
+	copyURLFunc = copy
+
+	t.Cleanup(func() {
+		openURLFunc = oldOpen
+		copyURLFunc = oldCopy
 	})
 }

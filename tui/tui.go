@@ -36,6 +36,8 @@ var (
 	stopProcessFunc = stopProcess
 	startItemFunc   = startItem
 	restartFunc     = client.Restart
+	openURLFunc     = openURL
+	copyURLFunc     = copyURL
 )
 
 // Run launches the TUI. It ensures the daemon is running, fetches the
@@ -93,6 +95,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "r":
 			return m.restartSelected()
+
+		case "o":
+			return m.openSelectedLocalURL()
+
+		case "c":
+			return m.copySelectedTailscaleURL()
 		}
 	}
 	return m, nil
@@ -318,6 +326,71 @@ func restartItem(item listItem) error {
 		return err
 	}
 	return nil
+}
+
+func (m model) openSelectedLocalURL() (model, tea.Cmd) {
+	if len(m.items) == 0 {
+		return m, nil
+	}
+
+	item := m.items[m.cursor]
+	if !item.Running {
+		m.statusMsg = fmt.Sprintf("cannot open '%s': process is not running", item.Name)
+		m.statusErr = true
+		return m, nil
+	}
+	if item.LocalURL == "" {
+		m.statusMsg = fmt.Sprintf("cannot open '%s': no local URL available", item.Name)
+		m.statusErr = true
+		return m, nil
+	}
+
+	if err := openURLFunc(item.LocalURL); err != nil {
+		m.statusMsg = fmt.Sprintf("failed to open '%s': %s", item.Name, err)
+		m.statusErr = true
+		return m, nil
+	}
+
+	m.statusMsg = fmt.Sprintf("opened %s", item.LocalURL)
+	m.statusErr = false
+	return m, nil
+}
+
+func (m model) copySelectedTailscaleURL() (model, tea.Cmd) {
+	if len(m.items) == 0 {
+		return m, nil
+	}
+
+	item := m.items[m.cursor]
+	if !item.Running {
+		m.statusMsg = fmt.Sprintf("cannot copy URL for '%s': process is not running", item.Name)
+		m.statusErr = true
+		return m, nil
+	}
+
+	url := selectedTailscaleURL(item)
+	if url == "" {
+		m.statusMsg = fmt.Sprintf("cannot copy URL for '%s': no Tailscale URL available", item.Name)
+		m.statusErr = true
+		return m, nil
+	}
+
+	if err := copyURLFunc(url); err != nil {
+		m.statusMsg = fmt.Sprintf("failed to copy URL for '%s': %s", item.Name, err)
+		m.statusErr = true
+		return m, nil
+	}
+
+	m.statusMsg = fmt.Sprintf("copied %s", url)
+	m.statusErr = false
+	return m, nil
+}
+
+func selectedTailscaleURL(item listItem) string {
+	if item.DNSURL != "" {
+		return item.DNSURL
+	}
+	return item.IPURL
 }
 
 func (m model) reloadSelected(selectedName string) (model, tea.Cmd) {

@@ -60,6 +60,9 @@ devserve
 **Keys:**
 - `↑/↓` — navigate processes
 - `enter` — start/stop selected process
+- `o` — open selected process on localhost
+- `c` — copy selected process Tailscale URL
+- `r` — restart selected process
 - `s` — save/remove from config
 - `q` — quit
 
